@@ -45,3 +45,11 @@ $RECYCLE.BIN/
 Network Trash Folder
 Temporary Items
 .apdisk
+
+#pdb
+*.pdb
+
+Letters_Data/
+
+#shaderCache
+./Library/ShaderCache/*.bin
