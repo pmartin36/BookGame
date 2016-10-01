@@ -32,7 +32,8 @@ public class ButtonUI : MonoBehaviour, LetterEventInterface {
 	Transform powerupParent;
 
 	private bool stopBlink = false;
-	private bool isBlinking = false;
+	private bool itemsBlinking = false;
+	private bool itemCountsBlinking = false;
 
 	private CameraController cameraController;
 
@@ -79,8 +80,8 @@ public class ButtonUI : MonoBehaviour, LetterEventInterface {
 		yield return null;
 	}
 
-	IEnumerator blinkAllSprites(){
-		isBlinking = true;
+	IEnumerator BlinkAllSprites(){
+		itemsBlinking = true;
 
 		List<Image> images = new List<Image> ();
 		for(int i = 1; i < powerupSprites.Count; i++) {
@@ -110,7 +111,45 @@ public class ButtonUI : MonoBehaviour, LetterEventInterface {
 		}
 
 		stopBlink = false;
-		isBlinking = false;
+		itemsBlinking = false;
+
+		yield return null;
+	}
+
+	IEnumerator BlinkAllPOTDCounts(){
+		itemCountsBlinking = true;
+
+		List<Text> text = new List<Text> ();
+		text.AddRange (this.GetComponentsInChildren<Text> ());
+		for(int i = 0; i < text.Count; i++){
+			Text t = text [i];
+
+			int n;
+			bool isNumber = int.TryParse (t.text, out n);
+
+			if (t == null || !isNumber) {
+				text.Remove (t);
+				i--;
+			}
+		}
+
+		while (!stopBlink) {
+			foreach (Text i in text) {
+				Color color = i.color;
+				color.a = Mathf.PingPong (Time.time/2f, 0.7f) + 0.3f;
+				i.color = color;
+			}
+			yield return new WaitForSeconds (0.2f);
+		}
+
+		foreach (Text i in text) {
+			Color color = i.color;
+			color.a = 1f;
+			i.color = color;
+		}
+
+		stopBlink = false;
+		itemCountsBlinking = false;
 
 		yield return null;
 	}
@@ -121,7 +160,7 @@ public class ButtonUI : MonoBehaviour, LetterEventInterface {
 		}
 		else if (GameManager.IsPowerupModifier (newLetter)) {
 			if (newLetter == "N") {
-				blinkAllSprites ();
+				BlinkAllSprites ();
 			}
 		}
 		else {
@@ -204,6 +243,17 @@ public class ButtonUI : MonoBehaviour, LetterEventInterface {
 			powerupSprites [0] = null;
 	}
 
+	void IncreaseAllPOTDs(){
+		stopBlink = true;
+		foreach (PowerupUI p in powerupSprites) {
+			if (p != null) {
+				if (GameManager.IsPOTD (p.letter)) {
+					increasePOTDItem (p.letter);
+				}
+			}
+		}
+	}
+
 	public void increasePOTDItem(string POTDItem){
 		for (int i = 1; i < powerupSprites.Count; i++) {
 			if (powerupSprites [i].letter == POTDItem) {
@@ -277,8 +327,8 @@ public class ButtonUI : MonoBehaviour, LetterEventInterface {
 
 	void removePowerups(){
 		stopBlink = true;
-		isBlinking = false;
-		StopCoroutine ("blinkAllSprites");
+		itemsBlinking = false;
+		StopCoroutine ("BlinkAllSprites");
 		powerupSprites.Clear ();
 		foreach (Transform t in powerupParent) {
 			GameObject.Destroy (t.gameObject);
@@ -350,10 +400,10 @@ public class ButtonUI : MonoBehaviour, LetterEventInterface {
 			break;
 		case "B":
 			//set image for B item
-			returnSprite = Resources.Load<Sprite> ("Sprites/Balloon");
+			returnSprite = Resources.LoadAll<Sprite> ("Sprites/springs")[0];
 			break;
 		case "C":
-			returnSprite = Resources.Load<Sprite> ("Sprites/Cloud");
+			returnSprite = null;
 			break;
 		case "D":
 			returnSprite = Resources.Load<Sprite> ("Sprites/doublejump");
@@ -362,10 +412,10 @@ public class ButtonUI : MonoBehaviour, LetterEventInterface {
 			returnSprite = Resources.Load<Sprite> ("Sprites/eraser");
 			break;
 		case "F":
-			returnSprite = Resources.Load<Sprite> ("Sprites/fast");
+			returnSprite = Resources.Load<Sprite> ("Sprites/Cloud");
 			break;
 		case "G":
-			returnSprite = null;
+			returnSprite = Resources.Load<Sprite> ("Sprites/Grapple");
 			break;
 		case "H":
 			returnSprite = Resources.Load<Sprite> ("Sprites/higher");
@@ -389,37 +439,37 @@ public class ButtonUI : MonoBehaviour, LetterEventInterface {
 			returnSprite = null;
 			break;
 		case "O":
-			returnSprite = null;
+			returnSprite = Resources.Load<Sprite> ("Sprites/opposite");
 			break;
 		case "P":
 			returnSprite = null;
 			break;
 		case "Q":
-			returnSprite = Resources.Load<Sprite> ("Sprites/quagmire");
+			returnSprite = Resources.Load<Sprite> ("Sprites/fast");
 			break;
 		case "R":
-			returnSprite = null;
+			returnSprite = Resources.Load<Sprite> ("Sprites/rotate");
 			break;
 		case "S":
-			returnSprite = Resources.LoadAll<Sprite> ("Sprites/springs")[0];
+			returnSprite = Resources.Load<Sprite> ("Sprites/quagmire");
 			break;
 		case "T":
-			returnSprite = null;
+			returnSprite = Resources.Load<Sprite> ("Sprites/timer");
 			break;
 		case "U":
 			returnSprite = Resources.Load<Sprite> ("Sprites/Umbrella");
 			break;
 		case "V":
-			returnSprite = null;
+			returnSprite = Resources.Load<Sprite> ("Sprites/Vapor_thumb");
 			break;
 		case "W":
-			returnSprite = null;
+			returnSprite = Resources.Load<Sprite> ("Sprites/wallclimb");
 			break;
 		case "X":
 			returnSprite = null;
 			break;
 		case "Y":
-			returnSprite = null;
+			returnSprite = Resources.Load<Sprite> ("Sprites/Yank");
 			break;
 		case "Z":
 			returnSprite = Resources.Load<Sprite> ("Sprites/binoculars");
@@ -438,7 +488,7 @@ public class ButtonUI : MonoBehaviour, LetterEventInterface {
 
 		//if the letter is a power-up modifier (duplicate/remove/etc)
 		if (GameManager.IsPowerupModifier (newLetter) && letter.canBeHarvested) {
-			if (newLetter == "R") {
+			if (newLetter == "C") {
 				if (powerupSprites.Count > 1 && powerupSprites [1] != null) {
 					count = powerupSprites [1].count;
 					newLetter = powerupSprites [1].letter;
@@ -448,8 +498,15 @@ public class ButtonUI : MonoBehaviour, LetterEventInterface {
 				}
 			}
 			else if (newLetter == "N") {
-				if (!isBlinking) {
-					StartCoroutine ("blinkAllSprites");
+				if (!itemsBlinking) {
+					StartCoroutine ("BlinkAllSprites");
+				}
+				return;
+			}
+			else if (newLetter == "X") {
+				//blink POTD item counts
+				if (!itemCountsBlinking) {
+					StartCoroutine ("BlinkAllPOTDCounts");
 				}
 				return;
 			}
@@ -503,10 +560,10 @@ public class ButtonUI : MonoBehaviour, LetterEventInterface {
 			text = "<b>A</b>ir";
 			break;
 		case "B":
-			text = "<b>B</b>alloon";
+			text = "<b>B</b>ouncy Platform";
 			break;
 		case "C":
-			text = "<b>C</b>loud";
+			text = "<b>C</b>opy";
 			break;
 		case "D":
 			text = "<b>D</b>ouble Jump";
@@ -515,7 +572,7 @@ public class ButtonUI : MonoBehaviour, LetterEventInterface {
 			text = "<b>E</b>raser";
 			break;
 		case "F":
-			text = "<b>F</b>ast";
+			text = "<b>F</b>loating Platform";
 			break;
 		case "G":
 			text = "<b>G</b>rapple";
@@ -545,16 +602,16 @@ public class ButtonUI : MonoBehaviour, LetterEventInterface {
 			text = "<b>O</b>pposite";
 			break;
 		case "P":
-			text = "<b>P</b>ropeller";
+			text = "<b>P</b>lay Again";
 			break;
 		case "Q":
-			text = "<b>Q</b>uagmire";
+			text = "<b>Q</b>uick";
 			break;
 		case "R":
-			text = "<b>R</b>eplicate";
+			text = "<b>R</b>otate";
 			break;
 		case "S":
-			text = "<b>S</b>pring";
+			text = "<b>S</b>low";
 			break;
 		case "T":
 			text = "<b>T</b>imer";
@@ -566,13 +623,13 @@ public class ButtonUI : MonoBehaviour, LetterEventInterface {
 			text = "<b>V</b>apor";
 			break;
 		case "W":
-			text = "<b>W</b>all Climb";
+			text = "<b>W</b>all Grab";
 			break;
 		case "X":
-			text = "E<b>x</b>tra";
+			text = "<b>X</b>tra";
 			break;
 		case "Y":
-			text = "<b>Y</b>ell";
+			text = "<b>Y</b>ank";
 			break;
 		case "Z":
 			text = "<b>Z</b>oom";
@@ -640,6 +697,9 @@ public class ButtonUI : MonoBehaviour, LetterEventInterface {
 			setPowerupText (e.PassedLetter.letter);
 			if (e.PassedLetter.letter == "N") {
 				removePowerups ();
+			}
+			else if (e.PassedLetter.letter == "X") {
+				IncreaseAllPOTDs ();
 			}
 			else {
 				advancePowerups (0);

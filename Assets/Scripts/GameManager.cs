@@ -47,17 +47,17 @@ public class GameManager : MonoBehaviour {
 
 	public static bool IsPOTD(string l){
 		l = l.ToUpper ();
-		return l == "B" || l == "C" || l == "E" || l == "H" || l == "K" || l == "L" || l == "M" || l == "S"; //add POTD as we go along
+		return l == "B" || l == "E" || l == "F" || l == "G" || l == "H" || l == "K" || l == "L" || l == "M" || l == "Y"; //add POTD as we go along
 	}
 
 	public static bool IsPowerupModifier(string l){
 		l = l.ToUpper ();
-		return l == "R" || l == "N";
+		return l == "C" || l == "N" || l == "X";
 	}
 
 	public static bool IsPassive(string l){
 		l = l.ToUpper ();
-		return l == "I" || l == "F" || l == "J" || l == "O" || l == "Q";
+		return l == "I" || l == "J" || l == "O" || l == "Q" || l == "S" || l == "T" || l == "V";
 	}
 
 	public static Vector2 angleToVector(float angle){

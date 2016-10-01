@@ -1,24 +1,25 @@
 ﻿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using System;
 
 public class ThrowableNew : MonoBehaviour {
 
 	public string Letter{ get; private set; }
 	public float LaunchTime { get; private set; }
 	public float TrajectoryAngle { get; private set; }
-	public Vector2 BoyStartingPosition { get; private set; }
+	public PlayerPhysics Thrower {get;set;}
 
 	public bool IsLaunched { get; private set; }
 
-	private Rigidbody2D rigid;
-	private SpriteRenderer sr;
+	protected Rigidbody2D rigid;
+	protected SpriteRenderer sr;
 
-	private Bounds boundingBox;
+	protected Bounds boundingBox;
 
-	private float startingVelocity;
+	protected float startingVelocity;
 
-	private GameObject[] trail;
+	protected GameObject[] trail;
 
 	// Use this for initialization
 	void Start () {
@@ -46,7 +47,7 @@ public class ThrowableNew : MonoBehaviour {
 	}
 
 	// Update is called once per frame
-	void Update () {
+	public virtual void Update () {
 		//if throwable is outside the level bounds (aside from up since it will always fall back down)
 		if (transform.position.x > boundingBox.max.x || transform.position.x < boundingBox.min.x || transform.position.y < boundingBox.min.y) {
 			DestroyImmediate (this.gameObject);
@@ -119,18 +120,20 @@ public class ThrowableNew : MonoBehaviour {
 	}
 
 	//actual projectile should call this
-	public void launch(){
+	public virtual void launch(){
 		DeleteTrailObjects ();
 
 		setKinematic (false);
 		rigid.velocity = GameManager.angleToVector (TrajectoryAngle) * startingVelocity;
+
+		sr.sortingLayerName = "BackItem";
 
 		this.transform.parent = null;
 		LaunchTime = Time.time;
 		IsLaunched = true;
 	}
 
-	private void setSprite(){
+	protected void setSprite(){
 		SpriteRenderer sr = GetComponent<SpriteRenderer> ();
 		switch (Letter.ToUpper()) {
 		case "E":
@@ -142,6 +145,12 @@ public class ThrowableNew : MonoBehaviour {
 		case "L":
 			sr.sprite = Resources.Load<Sprite> ("Sprites/lower");
 			break;
+		case "G":
+			sr.sprite = Resources.Load<Sprite> ("Sprites/grapple");
+			break;
+		case "Y":
+			sr.sprite = Resources.Load<Sprite> ("Sprites/yankgrapple");
+			break;
 		case "M":
 			sr.sprite = Resources.Load<Sprite> ("Sprites/make_usable");
 			break;
@@ -151,7 +160,7 @@ public class ThrowableNew : MonoBehaviour {
 		}
 	}
 
-	private void UseEffect(Letter effector){
+	public virtual void UseEffect(Letter effector){
 		switch (Letter.ToUpper()) {
 		case "E":
 			effector.startDisappear ();
@@ -163,7 +172,18 @@ public class ThrowableNew : MonoBehaviour {
 			effector.SetMoveAmount(Quaternion.Euler (0, 0, -effector.transform.localRotation.eulerAngles.z) * new Vector3 (0, -0.02f, 0));
 			break;
 		case "M":
-
+			if (!effector.canBeHarvested) {
+				effector.SetUnharvested (false);
+			}
+			break;
+		case "G":
+			Thrower.SetGrappleDirection (transform.position, null);
+			break;
+		case "Y":
+			if (Thrower.collisionLetter != effector) {
+				int direction = Math.Sign (Thrower.transform.position.x - this.transform.position.x);
+				effector.SetMoveAmount (Quaternion.Euler (0, 0, -effector.transform.localRotation.eulerAngles.z) * new Vector3 (direction * 0.02f, 0, 0));
+			}
 			break;
 		default:
 			Debug.Log (Letter + " is not a  throwable item");
@@ -172,7 +192,7 @@ public class ThrowableNew : MonoBehaviour {
 	}
 
 	/**** PHYSICS ****/
-	void OnTriggerEnter2D(Collider2D col){
+	public virtual void OnTriggerEnter2D(Collider2D col){
 		Letter l;
 		if (col.tag == "Walkable") {
 			l = col.transform.parent.gameObject.GetComponent<Letter> ();

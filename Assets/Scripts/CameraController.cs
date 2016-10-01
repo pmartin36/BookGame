@@ -19,9 +19,13 @@ public class CameraController : MonoBehaviour {
 
 	Camera cam;
 
+	public bool DisplayVapor { get; set; }
+	Material vaporEffect;
+
 	// Use this for initialization
 	void Start () {
 		init ();
+
 	}
 
 	void init(){
@@ -34,6 +38,9 @@ public class CameraController : MonoBehaviour {
 		start = cam.transform.position;
 
 		boundingBox = GameObject.FindGameObjectWithTag ("Background").GetComponent<SpriteRenderer> ().bounds;
+
+		DisplayVapor = false;
+		vaporEffect = Resources.Load<Material> ("Materials/Graphic/Vapor");
 	}
 
 	// Update is called once per frame
@@ -126,6 +133,35 @@ public class CameraController : MonoBehaviour {
 		StartCoroutine (Resize (levelSize, true));
 	}
 
+	public IEnumerator StartVapor(){
+		float startTime = Time.time;
+		Color startColor = new Color (1, 1, 1, 0);
+		vaporEffect.SetColor ("_Color", startColor);
+		vaporEffect.SetFloat ("_Magnitude", 0);
+
+		DisplayVapor = true;
+		while (Time.time - startTime <= 3) {
+			float lerpinterval = (Time.time - startTime) / 3;
+			vaporEffect.SetColor ("_Color", Color.Lerp (startColor, Color.white, lerpinterval));
+			vaporEffect.SetFloat ("_Magnitude",  Mathf.Lerp(0, 0.1f, lerpinterval));
+			yield return new WaitForEndOfFrame ();
+		}
+	}
+
+	public IEnumerator StopVapor(){
+		float startTime = Time.time;
+		Color endColor = new Color (1, 1, 1, 0);
+		vaporEffect.SetColor ("_Color", Color.white);
+		vaporEffect.SetFloat ("_Magnitude", 0.1f);
+		while (Time.time - startTime <= 3) {
+			float lerpinterval = (Time.time - startTime) / 3;
+			vaporEffect.SetColor ("_Color", Color.Lerp (Color.white, endColor, lerpinterval));
+			vaporEffect.SetFloat ("_Magnitude",  Mathf.Lerp(0.1f, 0, lerpinterval));
+			yield return new WaitForEndOfFrame ();
+		}
+		DisplayVapor = false;
+	}
+
 	IEnumerator Resize(float size, bool centerOnLevel = false){		
 		startSize = cam.orthographicSize;
 		start = transform.position;
@@ -145,5 +181,10 @@ public class CameraController : MonoBehaviour {
 		}
 
 		yield return null;
+	}
+
+	void OnRenderImage(RenderTexture src, RenderTexture dst){
+		if(DisplayVapor)
+			Graphics.Blit (src, dst, vaporEffect);
 	}
 }

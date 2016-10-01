@@ -1,6 +1,6 @@
 fileFormatVersion: 2
 guid: de361151ddc644942a32e08b36de4fd2
-timeCreated: 1464045159
+timeCreated: 1473554763
 licenseType: Free
 TextureImporter:
   fileIDToRecycleName:
@@ -22,6 +22,8 @@ TextureImporter:
     21300030: blue_boy_15
     21300032: blue_boy_16
     21300034: blue_boy_17
+    21300036: blue_boy_18
+    21300038: blue_boy_19
   serializedVersion: 2
   mipmaps:
     mipMapMode: 0
@@ -456,6 +458,49 @@ TextureImporter:
         - {x: 13.5, y: -23.5}
         - {x: 10.5, y: -22.5}
         - {x: 8.5, y: -24.5}
+    - name: blue_boy_18
+      rect:
+        serializedVersion: 2
+        x: 267
+        y: 151
+        width: 48
+        height: 80
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline:
+      - - {x: -23, y: 40}
+        - {x: -24, y: 37}
+        - {x: -24, y: -40}
+        - {x: 7, y: -40}
+        - {x: 7, y: -39}
+        - {x: 24, y: 2}
+        - {x: 24, y: 40}
+      - - {x: 21, y: -4}
+        - {x: 24, y: -3}
+        - {x: 24, y: 0}
+        - {x: 21, y: 1}
+        - {x: 19, y: -1}
+    - name: blue_boy_19
+      rect:
+        serializedVersion: 2
+        x: 336
+        y: 155
+        width: 61
+        height: 77
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline:
+      - - {x: -18.5, y: 38.5}
+        - {x: -19.5, y: 34.5}
+        - {x: -19.5, y: -29.5}
+        - {x: -17.5, y: -30.5}
+        - {x: 3.5, y: -38.5}
+        - {x: 24.5, y: -38.5}
+        - {x: 27.5, y: -36.5}
+        - {x: 30.5, y: -21.5}
+        - {x: 30.5, y: 38.5}
     outline: []
   spritePackingTag: 
   userData: 

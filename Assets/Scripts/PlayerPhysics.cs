@@ -30,7 +30,7 @@ public class PlayerPhysics : MonoBehaviour {
 	private float height, width;
 
 	public bool collidingWithLetter = false;
-	private Letter collisionLetter;
+	public Letter collisionLetter;
 	private bool exitEvent = false;
 	private bool letterEvent = false;
 
@@ -73,6 +73,12 @@ public class PlayerPhysics : MonoBehaviour {
 	private Rigidbody2D stringRigid;
 	private bool canDropFromBalloon = false;
 	private float stringGrabOffset;
+
+	public bool Grappling { get; private set; }
+	Vector3 grappleVector;
+	Vector3 grappleStartPoint;
+	Vector3 grappleEndPoint;
+	List<RopeSegment> throwableRope = new List<RopeSegment>();
 
 	private bool wallStuck = false;
 
@@ -136,8 +142,8 @@ public class PlayerPhysics : MonoBehaviour {
 		raycasted = false;
 		horizontal_set = false;
 
-		List<Hit> walkablehits = downRays.Where (s => s.raycastHit.collider != null && (s.raycastHit.collider.tag.Equals ("Walkable") || s.raycastHit.collider.tag.Equals("TempWalkable"))).ToList();
-		List<Hit> letterhits = downRays.Where (s => s.raycastHit.collider != null && s.raycastHit.collider.tag.Equals ("Letter")).ToList ();
+		List<Hit> walkablehits = downRays.Where (s => s.raycastHit.collider != null && !s.raycastHit.collider.isTrigger && (s.raycastHit.collider.tag.Equals ("Walkable") || s.raycastHit.collider.tag.Equals("TempWalkable"))).ToList();
+		List<Hit> letterhits = downRays.Where (s => s.raycastHit.collider != null && !s.raycastHit.collider.isTrigger && s.raycastHit.collider.tag.Equals ("Letter")).ToList ();
 
 		if (exitEvent) {
 			if (walkablehits.Count <= 0) {
@@ -155,7 +161,7 @@ public class PlayerPhysics : MonoBehaviour {
 		//ledge stuff
 		SetMovementOptions(walkablehits,letterhits);
 
-		//if our uprays ran in to anything we want to kill velocity
+		//if our uprays ran in to anything we want to kill velocity - now handled in oncollisionenter
 		StopIfUpRayCollision ();
 
 		updateStringVelocity ();
@@ -179,13 +185,31 @@ public class PlayerPhysics : MonoBehaviour {
 		}
 
 		Hit centerhit = walkablehits.Where (h => h.horizontal == 0).FirstOrDefault ();
-		if (centerhit != null && (walkablehits.Count > 1 || centerhit.raycastHit.normal.y >= 0.99f)) {
+		if (centerhit != null){// && (walkablehits.Count > 1 || centerhit.raycastHit.normal.y >= 0.99f)) {
 			//store last position in case player gets stuck in an illegal position
 			lastGroundedPosition = transform.position;
 			OnStableLocation = true;
 		}
 		else {
 			OnStableLocation = false;
+		}
+
+		if (Grappling) {
+			float playerMoveMag = (this.transform.position - grappleStartPoint).sqrMagnitude;
+			float distanceToMoveMag = (grappleEndPoint - grappleStartPoint).sqrMagnitude;
+			if (playerMoveMag >= distanceToMoveMag) {
+				StopGrapple ();
+			}
+			else {
+				//move
+				rigid.velocity = grappleVector * 8f;
+				transform.localScale = new Vector3(Mathf.Sign(rigid.velocity.x) * Mathf.Abs(transform.localScale.x), transform.localScale.y, 1);
+			}
+				
+			while(throwableRope[0].SqrDistanceFromStart < playerMoveMag){
+				Destroy (throwableRope [0].gameObject);
+				throwableRope.RemoveAt (0);
+			}
 		}
 
 		//check if out of bounds
@@ -200,7 +224,7 @@ public class PlayerPhysics : MonoBehaviour {
 			}
 		}
 		if (transform.position.y - height / 2f < boundingbox.min.y) {
-			resetPosition ();
+			GameManager.ResetLevel ();
 		}
 		if (transform.position.x + width / 2f > boundingbox.max.x) {
 			if (collisionLetter == null || collisionLetter.MoveAmount.x <= 0) {
@@ -254,8 +278,8 @@ public class PlayerPhysics : MonoBehaviour {
 	void StopIfUpRayCollision(){
 		if (rigid.velocity.y > 0) {
 			Hit uphit = upRays.Where (h => h.horizontal != 0).FirstOrDefault ();
-			if (uphit != null) {
-				rigid.velocity = new Vector2 (rigid.velocity.x, 0);
+			if (upRays.Count >= 1) {
+				//rigid.velocity = new Vector2 (rigid.velocity.x, 0);
 				playerController.jumpDown = false;
 			}
 		}
@@ -331,7 +355,7 @@ public class PlayerPhysics : MonoBehaviour {
 				//don't know how this could happen
 				resetPosition();
 			}
-			else if (letter.Count == 2 && letter.Find (x => x.horizontal == 0) == null) {
+			else if (letter.Count == 2 && !letter.Any (x => x.horizontal == 0)) {
 				//if hitting both sides but not in the middle (such as in between b)
 				Debug.Log ("Both sides");
 				resetPosition ();
@@ -394,7 +418,12 @@ public class PlayerPhysics : MonoBehaviour {
 		exitedStringItemState ();
 
 		float velx = rigid.velocity.x;
-		if (stringRigid != null) {
+		if (getPlayerController ().Climbing) {
+			ExitClimb ();
+			//float sign = Mathf.Sign (transform.localScale.x);
+			//velx = -sign * movespeed;
+		}
+		else if (stringRigid != null) {
 			velx = horizontal * movespeed;
 		}
 		rigid.velocity = new Vector2 (velx, jumpSpeed);
@@ -527,6 +556,10 @@ public class PlayerPhysics : MonoBehaviour {
 		} else {
 			rigid.isKinematic = false;
 		}
+	}
+
+	public bool getKinematic(){
+		return rigid.isKinematic;
 	}
 
 	public void ApplyForce(Vector3 force){
@@ -720,30 +753,109 @@ public class PlayerPhysics : MonoBehaviour {
 		return false;
 	}
 
-	/***************************************/
-	/********* COLLISION HANDLING **********/
-	/***************************************/
-	public void OnCollisionEnter2D(Collision2D col){		
-		PerformRaycast ();
+	public void SetGrappleDirection(Vector3 grapple_location, List<RopeSegment> ropes){
+		if (!rigid.isKinematic) {
+			
+			StopGrapple (); //destroy existing ropes
+			getPlayerController ().CancelBellows ();
+			getPlayerController ().CancelThrowable ();
 
-		if (CheckIfSquished (col)) {
-			GameManager.ResetLevel ();
+			Vector3 localScale = transform.localScale;
+			localScale.x = Mathf.Abs (localScale.x) * Mathf.Sign (grapple_location.x - transform.position.x);
+			transform.localScale = localScale;
+
+			Grappling = true;
+			grappleStartPoint = this.transform.position;
+			grappleEndPoint = grapple_location;
+			grappleVector = (grappleEndPoint - grappleStartPoint).normalized;
+			throwableRope = ropes;
+			setGravityScale (0);
 		}
+	}
 
-		//stopping item usage if landing while in use
-		if (downRays.Count > 0) {
-			if(!collidingWithLetter){
-				//stop slow motion
-				//CancelSlowMotion ();
-				InSlowMotion = false;
+	public void StopGrapple(){
+		Grappling = false;
+		foreach (RopeSegment r in throwableRope) {
+			Destroy (r.gameObject);
+		}
+		throwableRope.Clear ();
+		setGravityScale (1);
+	}
 
-				//stop using throwable
-				getPlayerController().CancelThrowable();
-				//stop using bellows
-				playerController.CancelBellows();
+	public void SetYank(Letter effector, GameObject tobject, List<RopeSegment> ropes){
+		if (this.collisionLetter != effector) {
+			getPlayerController ().CancelBellows ();
+			getPlayerController ().CancelThrowable ();
+			StartCoroutine (Yank (effector, tobject, ropes));
+		}
+		else {
+			for (int i = 0; i < ropes.Count; i++) {
+				Destroy (ropes [i].gameObject);
 			}
+			getPlayerController ().playerHasControl = true;
+		}
+	}
+
+	public IEnumerator Yank(Letter effector, GameObject tobject, List<RopeSegment> ropes){
+		Vector2 position = tobject.transform.position;
+
+		Vector3 localScale = transform.localScale;
+		localScale.x = Mathf.Abs (localScale.x) * Mathf.Sign (tobject.transform.position.x - transform.position.x);
+		transform.localScale = localScale;
+
+		rigid.velocity = Vector2.zero;
+		getPlayerController ().setPlayerActive (false);
+
+		//pull animation
+		anim.SetBool("yanking",true);
+
+		yield return new WaitForSeconds (1f);
+
+		anim.SetBool ("yanking", false);
+
+		int d = Math.Sign (this.transform.position.x - position.x);
+		effector.SetMoveAmount (Quaternion.Euler (0, 0, -effector.transform.localRotation.eulerAngles.z) * new Vector3 (d * 0.02f, 0, 0));
+		for (int i = 0; i < ropes.Count; i++) {
+			Destroy (ropes [i].gameObject);
 		}
 
+		getPlayerController ().setPlayerActive (true);
+	}
+
+	public void SetClimbing(){
+		PerformRaycast ();
+		List<Hit> leftFiltered = leftRays.Where (r => r.raycastHit.normal.y <= 0.1 && r.vertical == 0 && Mathf.Abs(r.colliderCrossPoint.x - r.raycastHit.point.x) < 0.1f).ToList();
+		List<Hit> rightFiltered = rightRays.Where (r => r.raycastHit.normal.y <= 0.1 && r.vertical == 0 && Mathf.Abs(r.colliderCrossPoint.x - r.raycastHit.point.x) < 0.1f).ToList();
+
+		Vector2 translateDistance;
+		if (leftFiltered.Count >= 3 && transform.localScale.x < 0) {
+			Hit closest = leftFiltered.OrderBy (r => r.distance).FirstOrDefault();
+			translateDistance = closest.raycastHit.point - closest.colliderCrossPoint;
+			EnterClimb (translateDistance);
+		}
+		else if (rightFiltered.Count >= 3 && transform.localScale.x > 0) {
+			Hit closest = rightFiltered.OrderBy (r => r.distance).FirstOrDefault();
+			translateDistance = (closest.raycastHit.point - closest.colliderCrossPoint) * 0.9f;
+			EnterClimb (translateDistance);
+		}
+	}
+
+	private void EnterClimb(Vector2 translateDistance){
+		rigid.isKinematic = true;
+		getPlayerController ().Climbing = true;
+		getPlayerController ().resetJumpCount ();
+		anim.SetBool ("climbing", true);
+	}
+
+	public void ExitClimb(){
+		if (getPlayerController ().Climbing) {
+			rigid.isKinematic = false;
+			getPlayerController ().Climbing = false;
+			anim.SetBool ("climbing", false);
+		}
+	}
+
+	public void CheckForCollisions(){
 		List<Hit> walkablehits = downRays.Where (s => s.raycastHit.collider.tag.Equals ("Walkable")).ToList();
 		if (walkablehits.Count > 0) {
 			Hit belowhit = walkablehits.Where (s => s.horizontal == 0).FirstOrDefault();
@@ -756,8 +868,11 @@ public class PlayerPhysics : MonoBehaviour {
 					}
 
 					getPlayerController ().playAudio (0);
+
 					anim.SetBool ("isJumping", false);
 					isJumping = false;
+
+					ExitClimb ();
 
 					float velx = previousFrameVelocity.x / movespeed;
 					rigid.velocity = Vector2.zero;
@@ -786,6 +901,37 @@ public class PlayerPhysics : MonoBehaviour {
 			}
 		}
 
+		//stopping item usage if landing while in use
+		if (downRays.Count > 0) {
+			if(!collidingWithLetter){
+				//stop slow motion
+				//CancelSlowMotion ();
+				InSlowMotion = false;
+
+				//stop using throwable
+				getPlayerController().CancelThrowable();
+				//stop using bellows
+				playerController.CancelBellows();
+			}
+		}
+	}
+
+	/***************************************/
+	/********* COLLISION HANDLING **********/
+	/***************************************/
+	public void OnCollisionEnter2D(Collision2D col){		
+		PerformRaycast ();
+
+		if (CheckIfSquished (col)) {
+			GameManager.ResetLevel ();
+		}
+
+		if (Grappling) {
+			StopGrapple ();
+		}
+
+		CheckForCollisions ();
+
 		exitEvent = false;
 		collisionNormal = col.contacts [0].normal;
 
@@ -800,6 +946,12 @@ public class PlayerPhysics : MonoBehaviour {
 
 				stringRigid.velocity = new Vector2 (moveAmount.x, stringRigid.velocity.y);
 			}
+		}
+
+		//if we hit the top of something on our jump
+		if (rigid.velocity.y > 0 && col.contacts.Any (c => c.normal.y < 0)) {
+			//rigid.velocity = new Vector2 (previousFrameVelocity.x, 0);
+			//getPlayerController().jumpDown = false;
 		}
 	}
 
@@ -824,9 +976,16 @@ public class PlayerPhysics : MonoBehaviour {
 			}
 			else {
 				adjusting_position = false;
-				playerController = getPlayerController ();
-				playerController.resetJumpCount ();
-				playerController.resetItemAvailability (3);
+				if (!collidingWithLetter && walkablehits.Count >= 1) {
+					Letter newLetter = walkablehits[0].raycastHit.collider.GetComponent<Letter> () ??  walkablehits[0].raycastHit.collider.transform.parent.gameObject.GetComponent<Letter> ();
+					if (newLetter != null) {
+						LetterEventOccur (newLetter);
+					}
+
+					playerController = getPlayerController ();
+					playerController.resetJumpCount ();
+					playerController.resetItemAvailability (3);
+				}
 			}
 		}
 	}

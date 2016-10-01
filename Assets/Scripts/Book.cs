@@ -86,7 +86,7 @@ public class Book : MonoBehaviour {
 	void OnTriggerEnter2D(Collider2D other){		
 		if (other.tag == "Player" && isOpen) {
 			box.enabled = false;
-			other.GetComponent<PlayerController> ().hoverTowardsPoint (new Vector3 (this.transform.position.x, this.transform.position.y - sr.bounds.extents.y / 2, other.transform.position.z));
+			other.GetComponent<PlayerController> ().StartLevelEnd (new Vector3 (this.transform.position.x, this.transform.position.y - sr.bounds.extents.y / 2, other.transform.position.z));
 		}
 	}
 

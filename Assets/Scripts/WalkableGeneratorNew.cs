@@ -34,12 +34,13 @@ public class WalkableGeneratorNew : MonoBehaviour {
 	List<Vector2> points = new List<Vector2> ();
 	SpriteRenderer sr;
 	float playerHeight;
-	float resolution = 0;
 
 	public static float normalRejectPoint = 0.8f;
 	public float platformHeight = 0.2f;
 
 	public GameObject meshPlatform;
+
+	private List<GameObject> existingWalkables = new List<GameObject> ();
 
 	void Start(){
 		sr = gameObject.GetComponent<SpriteRenderer> ();
@@ -47,34 +48,43 @@ public class WalkableGeneratorNew : MonoBehaviour {
 		playerHeight = Mathf.Abs(psr.bounds.max.y - psr.bounds.min.y);
 		meshPlatform = Resources.Load<GameObject> ("Prefabs/Walkable");
 
-		float min_x = sr.bounds.min.x;
-		float max_x = sr.bounds.max.x;
-		float min_y = sr.bounds.min.y;
-		float max_y = sr.bounds.max.y + playerHeight;
-		resolution = Mathf.Abs((max_x - min_x) / 100f);
+		GenerateWalkable (true);
+	}
 
-		foreach(EdgeCollider2D ec in GetComponents<EdgeCollider2D>()){
-			points = new List<Vector2> (ec.points);
-			points [points.Count - 1] = points [0];
+	public void GenerateWalkable(bool useEdgeCollider){
+		hits.Clear ();
+		wp.Clear ();
+		if (useEdgeCollider) {
+			foreach (EdgeCollider2D ec in GetComponents<EdgeCollider2D>()) {
+				points = new List<Vector2> (ec.points);
+				points [points.Count - 1] = points [0];
 
-			GetPointsNew ();
-			GenerateMeshFromHitsNew ();
+				GetPointsNew ();
+				GenerateMeshFromHitsNew ();
 
-			PolygonCollider2D pc = gameObject.AddComponent<PolygonCollider2D> ();
-			pc.sharedMaterial = ec.sharedMaterial;
-			pc.points = ec.points;
+				PolygonCollider2D pc = gameObject.AddComponent<PolygonCollider2D> ();
+				pc.sharedMaterial = ec.sharedMaterial;
+				pc.points = ec.points;
 
-			ec.enabled = false;
+				ec.enabled = false;
+			}
+		}
+		else {
+			foreach (PolygonCollider2D poly in GetComponents<PolygonCollider2D>()) {
+				points = new List<Vector2> (poly.points);
+				points [points.Count - 1] = points [0];
+
+				GetPointsNew ();
+				GenerateMeshFromHitsNew ();
+			}
 		}
 	}
 
 	void GetPointsNew(){
 		float max_y = points.Max (p => (transform.localRotation * p).y);
-		int max_y_point_index = points.FindIndex (p => (transform.localRotation * p).y == max_y);
-
+		int max_y_point_index = points.FindIndex (p => (transform.localRotation * p).y == max_y);  
 		float topOrBottomAngle = 0;
 		Vector2 previousdifference = Vector2.zero;
-
 		for (int i = max_y_point_index; i < points.Count + max_y_point_index + 1; i++) {
 			int thisIndex = i % points.Count;
 			int nextIndex = (i + 1) % points.Count;
@@ -128,6 +138,8 @@ public class WalkableGeneratorNew : MonoBehaviour {
 	}
 
 	void GenerateMeshFromHitsNew(){
+		int meshCount = 0;
+
 		wp = wp.OrderBy (w => w.i).ToList();
 		for (int i = 0; i < wp.Count; i++) {
 			List<Vector3> vertices = new List<Vector3> ();
@@ -180,23 +192,39 @@ public class WalkableGeneratorNew : MonoBehaviour {
 					m.uv = getUVs (vertices);
 					m.RecalculateNormals ();
 
-					GameObject newMesh = (GameObject)Instantiate (meshPlatform);
-					newMesh.transform.parent = this.transform;
-					newMesh.GetComponent<EdgeCollider2D> ().points = getColliderArray (vertices);
-					newMesh.transform.position = new Vector3 (0, 0, -1f);
+					GameObject newMesh;
+					if (meshCount >= existingWalkables.Count) {
+						newMesh = (GameObject)Instantiate (meshPlatform);
+						newMesh.transform.parent = this.transform;
+						newMesh.GetComponent<EdgeCollider2D> ().points = getColliderArray (vertices);
+						newMesh.transform.position = new Vector3 (0, 0, -1f);
+						existingWalkables.Add (newMesh);
+
+						MeshRenderer mr = newMesh.GetComponent<MeshRenderer> ();
+						mr.sortingLayerName = "Walkable";
+
+						Material mat = new Material (mr.material);
+
+						mat.color = GetComponent<Letter> ().canBeHarvested ? new Color (0.4f, 0.4f, 0.14f) : new Color (0.06f, 0.20f, 0.29f); //will probably need to be changed
+						mr.material = mat;
+					}
+					else {
+						newMesh = existingWalkables [meshCount];
+						newMesh.transform.localRotation = Quaternion.Euler(-transform.localRotation.eulerAngles);
+						newMesh.GetComponent<EdgeCollider2D> ().points = getColliderArray (vertices);
+						newMesh.transform.position = new Vector3 (0, 0, -1f);
+					}
 
 					MeshFilter mf = newMesh.GetComponent<MeshFilter> ();
 					mf.sharedMesh = m;
 
-					MeshRenderer mr = newMesh.GetComponent<MeshRenderer> ();
-					mr.sortingLayerName = "Walkable";
-
-					Material mat = new Material (mr.material);
-
-					mat.color = GetComponent<Letter> ().canBeHarvested ? new Color (0.4f, 0.4f, 0.14f) : new Color (0.06f, 0.20f, 0.29f); //will probably need to be changed
-					mr.material = mat;
+					meshCount++;
 				}
 			}
+		}
+		for (int i = meshCount; i < existingWalkables.Count; i++) {
+			DestroyImmediate (existingWalkables [i]);
+			existingWalkables.RemoveAt (i);
 		}
 	}
 

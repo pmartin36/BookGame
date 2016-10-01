@@ -29,6 +29,7 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 
 	private CameraController mainCamera;
 	private Vector3 lastPosition = Vector3.zero;
+	private Vector3 originalPosition;
 	private bool focusOnPlayer = true;
 
 	private float directionFacing = -1f;
@@ -52,10 +53,16 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 	public GameObject springPrefab;
 
 	private float baseMovespeed;
+	public bool Climbing { get; set; }
 	[SerializeField]
 	private TrailRenderer mstrail;
 
 	GameObject collidingKeyhole;
+	TimerPowerup timer;
+
+	bool oppositeInputs = false;
+	public ParticleSystem trailingRope { get;  set; }
+
 	//End Item Effects
 
 	void Awake(){
@@ -67,6 +74,8 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 		spriteRenderer = GetComponent<SpriteRenderer> ();
 		pphysics = GetComponent<PlayerPhysics> ();
 
+		originalPosition = transform.position;
+
 		baseMovespeed = pphysics.movespeed;
 		jumpTime = 0;
 
@@ -76,6 +85,8 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 		//items
 		bellows = GameObject.Find("bellows");
 		bellows.SetActive (false);
+
+		timer = GameObject.Find ("Timer_TimeLeft").GetComponent<TimerPowerup>();
 
 		audio = new List<AudioSource>(GetComponents<AudioSource> ());
 		anim = GetComponent<Animator> ();
@@ -208,14 +219,33 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 		}
 	}
 
-	void createThrowable(string l, bool isTrace){
-		GameObject t = Instantiate (throwable_prefab) as GameObject;
-		t.transform.parent = this.transform;
-		t.transform.localPosition = new Vector3 (0, spriteRenderer.bounds.extents.y * .25f, 0);
+	bool createThrowable(string l, bool isTrace){
+		if (l == "G" || l == "Y") {
+			if ((throwable != null && throwable.Letter != "G" && throwable.Letter != "Y") || throwable == null) {
+				GameObject t = Instantiate (throwable_prefab) as GameObject;
+				t.transform.parent = this.transform;
+				t.transform.localPosition = new Vector3 (0, spriteRenderer.bounds.extents.y * .25f, 0);
 
-		throwable = t.GetComponent<ThrowableNew> ();
-		throwable.Init ();
-		throwable.setLetter (l);
+				ThrowableWithTrail twt = t.AddComponent<ThrowableWithTrail> ();
+				twt.Thrower = pphysics;
+				twt.setLetter (l);
+				twt.Init (l == "G"); 
+				throwable = twt;
+				return true;
+			}
+		}
+		else {
+			GameObject t = Instantiate (throwable_prefab) as GameObject;
+			t.transform.parent = this.transform;
+			t.transform.localPosition = new Vector3 (0, spriteRenderer.bounds.extents.y * .25f, 0);
+
+			throwable = t.AddComponent<ThrowableNew> ();
+			throwable.Thrower = pphysics;
+			throwable.setLetter (l);
+			throwable.Init ();
+			return true;
+		}
+		return false;
 	}
 
 	public void setPlayerActive(bool active){
@@ -224,7 +254,7 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 	}
 
 	public void startHarvest(){		
-		if (harvestableLetter != null && harvestableLetter.canBeHarvested && pphysics.OnStableLocation){
+		if (playerHasControl && harvestableLetter != null && harvestableLetter.canBeHarvested && pphysics.OnStableLocation && trailingRope == null){
 			if ( !(GameManager.IsPowerupModifier (harvestableLetter.letter) && powerups.Count <= 0) ) {
 				pphysics.horizontal_move (0, true, false);
 				//add letter power to power array
@@ -258,7 +288,10 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 
 	public void horizontal_move(bool jumpCountOverride = false){
 		Vector2 velocity = pphysics.getVelocity();
-		if (playerHasControl) {
+		if (playerHasControl && !Climbing && !pphysics.Grappling) {
+			if (oppositeInputs) {
+				horizontal = -horizontal;
+			}
 			if( horizontal * transform.localScale.x < 0){ //different directions, swap player orientation
 				transform.localScale = new Vector3(Mathf.Sign(horizontal) * Mathf.Abs(transform.localScale.x), transform.localScale.y, 1);
 				directionFacing = Mathf.Sign(horizontal);
@@ -343,13 +376,13 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 				
 					//can only replicate the item in slot 1
 					//need to switch the letter to the powerup[0] slot before we send the event
-					if (harvestableLetter.letter == "R") {				
+					if (harvestableLetter.letter == "C") {	
+						sendHandlerEvent (eventLetter, powerups [0].count > 1 ? powerups [0].count : 0);
 						if (powerups.Count > 0 && powerups [0] != null) {
 							eventLetter.letter = powerups [0].letter.letter;
 							powerup_count = powerups [0].count;
 							newPowerup = true;
 						}
-						sendHandlerEvent (eventLetter, powerups [0].count > 1 ? powerups [0].count : 0);
 					}
 					//can only use the N powerup with an item in slot 1
 					else if (harvestableLetter.letter == "N") {
@@ -360,6 +393,25 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 							}
 						}
 						sendHandlerEvent (eventLetter, 0);
+					}
+					else if (harvestableLetter.letter == "X") {
+						foreach (Powerup p in powerups) {
+							if (GameManager.IsPOTD (p.letter.letter)) {
+								p.count++;
+							}
+						}
+						sendHandlerEvent (eventLetter, 0);
+					}
+					else if (harvestableLetter.letter == "P") {
+						transform.position = originalPosition;
+						List<Letter> letters = GameObject.FindGameObjectsWithTag ("Letter").Select (a => a.GetComponent<Letter> ()).ToList();
+						foreach (Letter a in letters) {
+							if (a != pphysics.collisionLetter) {
+								a.ResetLetter ();
+							}
+						}
+
+						//should we also destroy in air throwables?
 					}
 					//we're picking up a new powerup
 					else {
@@ -503,6 +555,7 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 			setBellowsLocation (0, 0);
 			break;
 		case "B":
+			/*Old Balloon
 			if (!onStringItem) {
 				GameObject balloon = Instantiate (Resources.Load<GameObject> ("Prefabs/balloon"), transform.position + new Vector3 (directionFacing * 0.1f, spriteRenderer.bounds.extents.y), Quaternion.identity) as GameObject;
 
@@ -519,12 +572,17 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 					DestroyImmediate (balloon);
 				}
 			}
-			break;
-		case "C":
-			if (pphysics.isAirborn()) {
-				GameObject cloud = Instantiate (Resources.Load<GameObject> ("Prefabs/cloud"), transform.position + new Vector3 (0, -spriteRenderer.bounds.extents.y * 1.1f), Quaternion.identity) as GameObject;
+			*/
+			//place bouncy platform
+			if(pphysics.isAirborn()){
+				GameObject spring = Instantiate (Resources.Load<GameObject>("Prefabs/Spring"), transform.position, Quaternion.identity) as GameObject;
+				SpriteRenderer sr = spring.GetComponent<SpriteRenderer> ();
+				spring.transform.position = spring.transform.position + new Vector3 (0, -spriteRenderer.bounds.extents.y);
+
 				DecreasePOTD (index);
 			}
+			break;
+		case "C":
 			break;
 		case "D":
 			jumpDown = false;
@@ -534,8 +592,14 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 			initThrowable (powerups [index].letter.letter);
 			break;
 		case "F":
+			//place floating platform
+			if (pphysics.isAirborn()) {
+				GameObject cloud = Instantiate (Resources.Load<GameObject> ("Prefabs/cloud"), transform.position + new Vector3 (0, -spriteRenderer.bounds.extents.y * 1.1f), Quaternion.identity) as GameObject;
+				DecreasePOTD (index);
+			}
 			break;
 		case "G":
+			initThrowable (powerups [index].letter.letter);
 			break;
 		case "H":
 			initThrowable (powerups [index].letter.letter);
@@ -562,16 +626,12 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 		case "Q":
 			break;
 		case "R":
+			if (pphysics.collisionLetter != null) {
+				pphysics.collisionLetter.SetRotating (true);
+			}
+			powerups [index].available = true;
 			break;
 		case "S":
-			//place spring
-			if(pphysics.isAirborn()){
-				GameObject spring = Instantiate (Resources.Load<GameObject>("Prefabs/Spring"), transform.position, Quaternion.identity) as GameObject;
-				SpriteRenderer sr = spring.GetComponent<SpriteRenderer> ();
-				spring.transform.position = spring.transform.position + new Vector3 (0, -spriteRenderer.bounds.extents.y);
-
-				DecreasePOTD (index);
-			}
 			break;
 		case "T":
 			break;
@@ -592,18 +652,20 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 				else {
 					pphysics.attachToStringItem (umbrella);
 				}
-
-				powerups [index].available = true;
 			}
+			powerups [index].available = true;
 			break;
 		case "V":
 			
 			break;
 		case "W":
+			pphysics.SetClimbing ();
+			powerups [index].available = true;
 			break;
 		case "X":
 			break;
 		case "Y":
+			initThrowable (powerups [index].letter.letter);
 			break;
 		case "Z":
 			mainCamera.cameraToLevelSize ();
@@ -631,6 +693,7 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 		case "F":
 			break;
 		case "G":
+			StartCoroutine(throwThrowable(index));
 			break;
 		case "H":
 			StartCoroutine(throwThrowable(index));
@@ -672,10 +735,12 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 		case "V":			
 			break;
 		case "W":
+			pphysics.ExitClimb ();
 			break;
 		case "X":
 			break;
 		case "Y":
+			StartCoroutine(throwThrowable(index));
 			break;
 		case "Z":
 			mainCamera.restoreCamera (true);
@@ -695,7 +760,7 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 		case "E":
 			break;
 		case "F":
-			pphysics.movespeed *= 2f;
+			
 			//mstrail.gameObject.SetActive(true);
 			break;
 		case "G":
@@ -718,21 +783,25 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 		case "N":
 			break;
 		case "O":
+			oppositeInputs = true;
 			break;
 		case "P":
 			break;
 		case "Q":
-			pphysics.movespeed *= 0.5f;
+			pphysics.movespeed *= 2f;
 			break;
 		case "R":
 			break;
 		case "S":
+			pphysics.movespeed *= 0.5f;
 			break;
 		case "T":
+			timer.SetTimer ();
 			break;
 		case "U":
 			break;
 		case "V":
+			StartCoroutine (mainCamera.StartVapor ());
 			break;
 		case "W":
 			break;
@@ -756,8 +825,7 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 		case "E":
 			break;
 		case "F":
-			pphysics.movespeed /= 2f;
-			mstrail.gameObject.SetActive(false);
+			
 			break;
 		case "G":
 			
@@ -779,21 +847,26 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 		case "N":
 			break;
 		case "O":
+			oppositeInputs = false;
 			break;
 		case "P":
 			break;
 		case "Q":
-			pphysics.movespeed /= 0.5f;
+			pphysics.movespeed /= 2f;
+			mstrail.gameObject.SetActive(false);
 			break;
 		case "R":
 			break;
 		case "S":
+			pphysics.movespeed *= 2f;
 			break;
 		case "T":
+			timer.StopTimer ();
 			break;
 		case "U":
 			break;
 		case "V":
+			StartCoroutine (mainCamera.StopVapor ());
 			break;
 		case "W":
 			break;
@@ -810,9 +883,9 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 	}
 
 	//This call comes from Book OnTriggerEnter
-	public void hoverTowardsPoint(Vector3 point){
-		
+	public void StartLevelEnd(Vector3 point){
 		setPlayerActive (false);
+		timer.StopTimer ();
 		StartCoroutine (hoverTowards (point));
 	}
 
@@ -889,37 +962,46 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 	}
 
 	void initThrowable(string letter){
-		playerHasControl = false;
-		createThrowable (letter, false);
-		throwable_active = true;
-		anim.SetBool ("throwableActive", true);
-		pphysics.StartSlowMotion ();
+		bool creationSuccessful = createThrowable (letter, false);
+		if (creationSuccessful) {
+			playerHasControl = false;
+			throwable_active = true;
+			anim.SetBool ("throwableActive", true);
+
+			if (pphysics.collidingWithLetter) {
+				pphysics.zeroVelocity ();
+			}
+
+			pphysics.StartSlowMotion ();
+		}
 	}
 
 	IEnumerator throwThrowable(int index){
 		anim.SetBool ("throwableActive", false);
 		pphysics.InSlowMotion = false;
 
-		if (Mathf.Abs (horizontal) + Mathf.Abs (vertical) > 0.3f && throwable_active) {
-			//set player to throw sprite
-			//
-
+		if(throwable_active){
 			throwable_active = false;
-			throwable.launch ();
+			if (Mathf.Abs (horizontal) + Mathf.Abs (vertical) > 0.3f) {
+				//set player to throw sprite
+				//
 
-			//start throw animation
+				throwable.launch ();
+
+				//start throw animation
+				//
+
+				DecreasePOTD (index);
+				yield return new WaitForSeconds (0.2f);
+
+			}
+			else {
+				DestroyImmediate (throwable.gameObject);
+			}
+
+			//set player back to idle
 			//
-
-			DecreasePOTD (index);
-			yield return new WaitForSeconds (0.2f);
-
 		}
-		else if(throwable_active) {
-			DestroyImmediate (throwable.gameObject);
-		}
-
-		//set player back to idle
-		//
 
 		playerHasControl = true;
 
