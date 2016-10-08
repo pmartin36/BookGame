@@ -41,12 +41,13 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 	private List<AudioSource> audio;
 
 	//Item effects
+	public bool inputFromMousePosition;
 	private GameObject bellows;
-	private bool bellows_active = false;
+	public bool bellows_active = false;
 
 	//private Throwable throwable;
 	private ThrowableNew throwable;
-	private bool throwable_active = false;
+	public bool throwable_active = false;
 	[SerializeField]
 	private GameObject throwable_prefab;
 
@@ -151,10 +152,16 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 			float currentRotation = this.bellows.transform.rotation.eulerAngles.z;
 			float stickRotation = 0;
 			Vector3 location;
+			Vector3 directionalVector;
+			if (inputFromMousePosition) {
+				directionalVector = new Vector2 (horizontal - transform.position.x, vertical - transform.position.y);
+			}
+			else {
+				directionalVector = new Vector3 (horizontal, vertical);
+			}
 
-			if (Mathf.Abs (horizontal) + Mathf.Abs (vertical) > 0.5f) {
-				//we will be making changes to the angle
-				Vector3 directionalVector = new Vector3 (horizontal, vertical);
+			if (Mathf.Abs (directionalVector.x) + Mathf.Abs (directionalVector.y) > 0.5f) {
+				//we will be making changes to the angle 
 				stickRotation = Vector3.Angle (Vector3.right, directionalVector);
 				//getting the cross product will tell us whether we are going clockwise or ccw
 				//if it's ccw, we set it to -angle
@@ -163,37 +170,44 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 					stickRotation *= -1;
 				}
 
-				if (horizontal > 0) {
+				if (directionalVector.x > 0) {
 					transform.localScale = new Vector3 (-Mathf.Abs (transform.localScale.x), transform.localScale.y, transform.localScale.z);
 				}
-				else if (horizontal < 0) {
+				else if (directionalVector.x < 0) {
 					transform.localScale = new Vector3 (Mathf.Abs (transform.localScale.x), transform.localScale.y, transform.localScale.z);
 				}
 
 				bellows.transform.Rotate (Vector3.forward, stickRotation - currentRotation);
-				location = Vector3.Normalize (new Vector3 (horizontal, vertical, 0));
+				location = Vector3.Normalize (directionalVector);
 			}
 			else {
 				//angle will not change
-				Vector2 vector = GameManager.angleToVector(currentRotation);
-				location = Vector3.Normalize(new Vector3 (vector.x, vector.y, 0));
+				Vector2 vector = GameManager.angleToVector (currentRotation);
+				location = Vector3.Normalize (new Vector3 (vector.x, vector.y, 0));
 			}
-				
 			bellows.transform.position = transform.position + location;
 		}
 	}
 
 	void setThrowable(float horizontal, float vertical){
 		if (throwable_active) {
-			if (collidingWithLetter) {
-				pphysics.zeroVelocity ();
+			float stickRotation = 0;
+			Vector3 directionalVector;
+
+			if (inputFromMousePosition) {
+				if(pphysics.PointInCollider(new Vector3(horizontal, vertical, -2))){
+					directionalVector = Vector3.zero;
+				}
+				else{
+					directionalVector = new Vector2 (horizontal - transform.position.x, vertical - transform.position.y);
+				}
+			}
+			else {
+				directionalVector = new Vector3 (horizontal, vertical);
 			}
 
-			float stickRotation;
-			float orientation = Mathf.Sign(transform.localScale.x);
-			if (Mathf.Abs (horizontal) + Mathf.Abs (vertical) > 0.5f) {
+			if (Mathf.Abs (directionalVector.x) + Mathf.Abs (directionalVector.y) > 0.5f) {
 				//we will be making changes to the angle
-				Vector3 directionalVector = new Vector3 (horizontal, vertical);
 				stickRotation = Vector3.Angle (Vector3.right, directionalVector);
 				//getting the cross product will tell us whether we are going clockwise or ccw
 				//if it's ccw, we set it to -angle
@@ -202,10 +216,10 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 					stickRotation *= -1;
 				}
 
-				if (horizontal > 0) {
+				if (directionalVector.x > 0) {
 					transform.localScale = new Vector3 (Mathf.Abs (transform.localScale.x), transform.localScale.y, transform.localScale.z);
 				}
-				else if (horizontal < 0) {
+				else if (directionalVector.x < 0) {
 					transform.localScale = new Vector3 (-Mathf.Abs (transform.localScale.x), transform.localScale.y, transform.localScale.z);
 				}
 
@@ -256,7 +270,6 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 	public void startHarvest(){		
 		if (playerHasControl && harvestableLetter != null && harvestableLetter.canBeHarvested && pphysics.OnStableLocation && trailingRope == null){
 			if ( !(GameManager.IsPowerupModifier (harvestableLetter.letter) && powerups.Count <= 0) ) {
-				pphysics.horizontal_move (0, true, false);
 				//add letter power to power array
 				StartCoroutine (harvestLetter ());
 			}
@@ -342,9 +355,11 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 
 	IEnumerator harvestLetter(){
 		//signal the start of the harvest process
-		if (!harvesting) {
+		bool colliding = pphysics.CheckLetterCollision (); //the rays haven't been updated after fixedUpdate...we have to make sure we're still on a letter
+		if (!harvesting && harvestableLetter != null && !harvestableLetter.Rotating && colliding) {
 			pphysics.horizontal_move (0, true, false);
 			setPlayerActive (false);
+
 			harvesting = true;
 			anim.SetBool ("harvesting", true);
 			harvestableLetter.setAsHarvested ();
@@ -488,8 +503,9 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 
 
 
-	public void Item1Down(){
+	public void Item1Down(bool _inputFromMouse = false){
 		if (playerHasControl) {
+			inputFromMousePosition = _inputFromMouse;
 			int index = getIndexFromMapping ("X");
 			if (index < 0) return;
 
@@ -513,8 +529,9 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 		}
 	}
 
-	public void Item2Down(){
+	public void Item2Down(bool _inputFromMouse = false){
 		if (playerHasControl) {
+			inputFromMousePosition = _inputFromMouse;
 			int index = getIndexFromMapping ("Y");
 			if (index < 0) return;
 
@@ -935,8 +952,14 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 			bellows_active = false;
 			Sprite sprite = Resources.Load<Sprite> ("Sprites/bellows_compressed_with_air");
 			sr.sprite = sprite;
-			if (jumpCount == 0)
+
+			if (pphysics.collidingWithLetter) {
+				resetItemAvailability (3);
+				resetJumpCount ();
+			}
+			else if (jumpCount == 0) {
 				jumpCount = 1;
+			}
 
 			pphysics.InSlowMotion = false;
 
@@ -982,7 +1005,7 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 
 		if(throwable_active){
 			throwable_active = false;
-			if (Mathf.Abs (horizontal) + Mathf.Abs (vertical) > 0.3f) {
+			if (throwable.ValidTrajectory) {
 				//set player to throw sprite
 				//
 
@@ -1017,6 +1040,7 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 
 			playerHasControl = true;
 		}
+		inputFromMousePosition = false;
 	}
 
 	public void CancelBellows(){
@@ -1026,6 +1050,7 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 			bellows.SetActive (false);
 			playerHasControl = true;
 		}
+		inputFromMousePosition = false;
 	}
 
 	void OnTriggerEnter2D(Collider2D other){

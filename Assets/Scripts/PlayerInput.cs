@@ -7,20 +7,39 @@ public class PlayerInput : MonoBehaviour {
 	public Menu menu;
 	public GameManager gm;
 
+	bool mousetrack = false;
+
+
 	public bool MenuOpen { get; set; }
 
 	// Use this for initialization
 	void Start () {
-		
+		//Cursor.visible = false;
 	}
 
 	// Update is called once per frame
 	void Update () {
-		float horizontal = Input.GetAxis ("Horizontal");
-		float vertical = Input.GetAxis ("Vertical");
 
+		float horizontal;
+		float vertical;
+		if (mousetrack && (pc.bellows_active || pc.throwable_active)) {
+			Vector3 mpos = Camera.main.ScreenToWorldPoint (Input.mousePosition);
+			horizontal = mpos.x;
+			vertical = mpos.y;
+		}
+		else {
+			if (MenuOpen) {
+				horizontal = Input.GetAxisRaw ("Horizontal");
+				vertical = Input.GetAxisRaw ("Vertical");
+			}
+			else {
+				horizontal = Input.GetAxis ("Horizontal");
+				vertical = Input.GetAxis ("Vertical");
+			}
+		}
 
 		if(Input.GetButtonDown("PlayPause")){
+			mousetrack = false;
 			MenuOpen = !MenuOpen;
 			menu.openClose (MenuOpen);
 			GameManager.SetMenuOpen (MenuOpen);
@@ -48,7 +67,7 @@ public class PlayerInput : MonoBehaviour {
 				pc.startHarvest ();
 				return;
 			}
-
+				
 			pc.horizontal = horizontal;
 			pc.vertical = vertical;
 
@@ -62,16 +81,36 @@ public class PlayerInput : MonoBehaviour {
 			}
 
 			if (Input.GetButtonDown ("Item1")) {
+				mousetrack = false;
 				pc.Item1Down ();
+			}
+			else if (Input.GetMouseButtonDown (0)) {
+				mousetrack = true;
+				pc.Item1Down (true);
 			}
 			if (Input.GetButtonUp ("Item1")) {
 				pc.Item1Up ();
+				mousetrack = false;
+			}
+			else if (Input.GetMouseButtonUp (0)) {
+				pc.Item1Up ();
+				mousetrack = false;
 			}
 
 			if (Input.GetButtonDown ("Item2")) {
+				mousetrack = false;
 				pc.Item2Down ();
 			}
+			else if (Input.GetMouseButtonDown (1)) {
+				mousetrack = true;
+				pc.Item2Down (true);
+			}
 			if (Input.GetButtonUp ("Item2")) {
+				mousetrack = false;
+				pc.Item2Up ();
+			}
+			else if (Input.GetMouseButtonUp (1)) {
+				mousetrack = false;
 				pc.Item2Up ();
 			}
 

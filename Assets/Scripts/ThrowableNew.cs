@@ -8,6 +8,7 @@ public class ThrowableNew : MonoBehaviour {
 	public string Letter{ get; private set; }
 	public float LaunchTime { get; private set; }
 	public float TrajectoryAngle { get; private set; }
+	public bool ValidTrajectory {get; private set;}
 	public PlayerPhysics Thrower {get;set;}
 
 	public bool IsLaunched { get; private set; }
@@ -99,6 +100,7 @@ public class ThrowableNew : MonoBehaviour {
 					trail [index].SetActive (false);
 				}
 			}
+			ValidTrajectory = true;
 		}
 	}
 
@@ -116,6 +118,7 @@ public class ThrowableNew : MonoBehaviour {
 
 	public void ClearTrajectory(){
 		TrajectoryAngle = -1000;
+		ValidTrajectory = false;
 		ClearTrail ();
 	}
 

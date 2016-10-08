@@ -143,6 +143,8 @@ public class Letter : MonoBehaviour,LetterEventInterface {
 		RotatingLetter rl = rotationTrace.AddComponent<RotatingLetter> ();
 		rl.SetParentLetter (this);
 
+		yield return new WaitForFixedUpdate (); //wait a tick to see if we are even capable of rotating at all
+
 		int count = 0;
 		while (Rotating && Mathf.Abs(transform.localRotation.eulerAngles.z - endingRotation.z%360) > 0.01f) {
 			transform.localRotation = Quaternion.Euler(Vector3.Lerp (startingRotation, endingRotation, (Time.time - startTime) / 5));

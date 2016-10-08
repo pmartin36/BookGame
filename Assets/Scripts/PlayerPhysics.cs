@@ -47,7 +47,7 @@ public class PlayerPhysics : MonoBehaviour {
 	private List<Hit> rightRays;
 	private bool raycasted = false;
 
-	Vector2 previousPosition;
+	public Vector2 previousPosition;
 	Vector2 lastGroundedPosition;
 	Vector2 previousFrameVelocity;
 
@@ -253,6 +253,11 @@ public class PlayerPhysics : MonoBehaviour {
 
 		previousFrameVelocity = rigid.velocity;
 		previousPosition = transform.position;
+	}
+
+	public bool CheckLetterCollision(){
+		PerformRaycast ();
+		return downRays.Any (s => s.raycastHit.collider != null && !s.raycastHit.collider.isTrigger && s.raycastHit.collider.tag.Equals ("Walkable"));
 	}
 
 	private bool CheckIfPositionInBounds(float xOffset = 0, float yOffset = 0){
@@ -856,6 +861,20 @@ public class PlayerPhysics : MonoBehaviour {
 	}
 
 	public void CheckForCollisions(){
+		//stopping item usage if landing while in use
+		if (downRays.Count > 0) {
+			if(!collidingWithLetter){
+				//stop slow motion
+				//CancelSlowMotion ();
+				InSlowMotion = false;
+
+				//stop using throwable
+				getPlayerController().CancelThrowable();
+				//stop using bellows
+				playerController.CancelBellows();
+			}
+		}
+
 		List<Hit> walkablehits = downRays.Where (s => s.raycastHit.collider.tag.Equals ("Walkable")).ToList();
 		if (walkablehits.Count > 0) {
 			Hit belowhit = walkablehits.Where (s => s.horizontal == 0).FirstOrDefault();
@@ -900,20 +919,10 @@ public class PlayerPhysics : MonoBehaviour {
 				exitedStringItemState ();
 			}
 		}
+	}
 
-		//stopping item usage if landing while in use
-		if (downRays.Count > 0) {
-			if(!collidingWithLetter){
-				//stop slow motion
-				//CancelSlowMotion ();
-				InSlowMotion = false;
-
-				//stop using throwable
-				getPlayerController().CancelThrowable();
-				//stop using bellows
-				playerController.CancelBellows();
-			}
-		}
+	public bool PointInCollider(Vector3 point){
+		return side.bounds.Contains (point);
 	}
 
 	/***************************************/
@@ -976,15 +985,17 @@ public class PlayerPhysics : MonoBehaviour {
 			}
 			else {
 				adjusting_position = false;
-				if (!collidingWithLetter && walkablehits.Count >= 1) {
-					Letter newLetter = walkablehits[0].raycastHit.collider.GetComponent<Letter> () ??  walkablehits[0].raycastHit.collider.transform.parent.gameObject.GetComponent<Letter> ();
-					if (newLetter != null) {
-						LetterEventOccur (newLetter);
-					}
+				if (walkablehits.Count >= 1) {
+					if (!collidingWithLetter) {
+						Letter newLetter = walkablehits [0].raycastHit.collider.GetComponent<Letter> () ?? walkablehits [0].raycastHit.collider.transform.parent.gameObject.GetComponent<Letter> ();
+						if (newLetter != null) {
+							LetterEventOccur (newLetter);
+						}
 
-					playerController = getPlayerController ();
-					playerController.resetJumpCount ();
-					playerController.resetItemAvailability (3);
+						playerController = getPlayerController ();
+						playerController.resetJumpCount ();
+						playerController.resetItemAvailability (3);
+					}
 				}
 			}
 		}
