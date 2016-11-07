@@ -197,7 +197,7 @@ public class PlayerPhysics : MonoBehaviour {
 		if (Grappling) {
 			float playerMoveMag = (this.transform.position - grappleStartPoint).sqrMagnitude;
 			float distanceToMoveMag = (grappleEndPoint - grappleStartPoint).sqrMagnitude;
-			if (playerMoveMag >= distanceToMoveMag) {
+			if (distanceToMoveMag - playerMoveMag < 0.01) {
 				StopGrapple ();
 			}
 			else {
@@ -760,21 +760,26 @@ public class PlayerPhysics : MonoBehaviour {
 
 	public void SetGrappleDirection(Vector3 grapple_location, List<RopeSegment> ropes){
 		if (!rigid.isKinematic) {
-			
-			StopGrapple (); //destroy existing ropes
-			getPlayerController ().CancelBellows ();
-			getPlayerController ().CancelThrowable ();
+			if (Vector3.Distance (this.transform.position, grapple_location) > 1) {
+				StopGrapple (); //destroy existing ropes
+				getPlayerController ().CancelBellows ();
+				getPlayerController ().CancelThrowable ();
 
-			Vector3 localScale = transform.localScale;
-			localScale.x = Mathf.Abs (localScale.x) * Mathf.Sign (grapple_location.x - transform.position.x);
-			transform.localScale = localScale;
+				Vector3 localScale = transform.localScale;
+				localScale.x = Mathf.Abs (localScale.x) * Mathf.Sign (grapple_location.x - transform.position.x);
+				transform.localScale = localScale;
 
-			Grappling = true;
-			grappleStartPoint = this.transform.position;
-			grappleEndPoint = grapple_location;
-			grappleVector = (grappleEndPoint - grappleStartPoint).normalized;
-			throwableRope = ropes;
-			setGravityScale (0);
+				Grappling = true;
+				grappleStartPoint = this.transform.position;
+				grappleEndPoint = grapple_location;
+				grappleVector = (grappleEndPoint - grappleStartPoint).normalized;
+				throwableRope = ropes;
+				setGravityScale (0);
+			}
+			else {
+				throwableRope = ropes;
+				StopGrapple ();
+			}
 		}
 	}
 

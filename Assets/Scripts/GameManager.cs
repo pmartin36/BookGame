@@ -8,8 +8,11 @@ public class GameManager : MonoBehaviour {
 	ButtonUI buttonUI;
 	private int currentLevel = 0;
 	public static int letters_active = 0;
-
 	public static bool MenuOpen {get; set;}
+	public static bool LevelComplete { get; set; }
+
+	public GameObject levelCompleteContainer;
+	public GameObject levelOngoingContainer;
 
 	void Awake(){
 		
@@ -21,15 +24,18 @@ public class GameManager : MonoBehaviour {
 
 		PlayerController player = GameObject.FindGameObjectWithTag ("Player").GetComponent<PlayerController> ();
 		player.PowerupChange += buttonUI.c_ItemChangeEvent;
+
+		LevelComplete = false;
+		levelCompleteContainer = GameObject.FindGameObjectWithTag ("LevelCompleteContainer");
+		levelOngoingContainer = GameObject.FindGameObjectWithTag ("LevelOngoingContainer");
+
+		levelCompleteContainer.SetActive (false);
+		//levelOngoingContainer.SetActive(false);
 	}
 	
 	// Update is called once per frame
 	void Update () {
-		/*
-		GameObject[] p = GameObject.FindGameObjectsWithTag ("Player");
-		PlayerPhysics wtf = p[0].GetComponent<PlayerPhysics> ();
-		Debug.Log (p.Length);
-		*/
+
 	}
 
 	public static void ResetLevel(){
@@ -37,7 +43,16 @@ public class GameManager : MonoBehaviour {
 		SceneManager.LoadScene (SceneManager.GetActiveScene().buildIndex);
 	}
 
-	public void Exit(){
+	public static void sExitToMenu(){
+		GameObject.FindGameObjectWithTag ("GameManager").GetComponent<GameManager> ().ExitToMenu ();
+	}
+
+	public void ExitToMenu(){
+		SetMenuOpen (false);
+		SceneManager.LoadScene (0);
+	}
+
+	public static void QuitApplication(){
 		Application.Quit ();
 	}
 
@@ -115,12 +130,24 @@ public class GameManager : MonoBehaviour {
 	IEnumerator closeBookEndLevel(){
 		Book book = GameObject.FindGameObjectWithTag ("Book").GetComponent<Book> ();
 		PlayerController player = GameObject.FindGameObjectWithTag ("Player").GetComponent<PlayerController> ();
+		CameraController cc = Camera.main.GetComponent<CameraController> ();
 
+		/*
 		book.setOpen (false);
 		while (book.isOpen) {
 			yield return new WaitForSeconds (1);
 		}
-		GameManager.LoadNextLevel ();
+		*/
+
+		StartCoroutine (cc.EndLevelFade ()); //finishes in 1 second
+		yield return new WaitForSeconds(.85f);
+		yield return StartCoroutine (book.openClose (false)); //finishes in .5 seconds
+		book.playAudio (1);
+		 
+		//go to showing line of book -> wait for input -> end level
+		GameManager.LevelComplete = true;
+		levelCompleteContainer.SetActive (true);
+		levelOngoingContainer.SetActive (false);
 	}
 
 	IEnumerator openBook(){
@@ -129,6 +156,7 @@ public class GameManager : MonoBehaviour {
 		CameraController cc = Camera.main.GetComponent<CameraController> ();
 
 		//disable player
+		player.playerHasControl = false;
 		player.setPlayerActive(false);
 
 		//pan to book
@@ -148,6 +176,7 @@ public class GameManager : MonoBehaviour {
 
 		//enable the player
 		player.setPlayerActive(true);
+		player.playerHasControl = true;
 	}
 
 	public static string letterToPowerupName(string letter){
@@ -212,7 +241,7 @@ public class GameManager : MonoBehaviour {
 
 	public static void SetTimeScale(float timeScale){
 		if (MenuOpen) {
-			Time.timeScale = 0;
+			Time.timeScale = 0.0000001f;
 		}
 		else {
 			Time.timeScale = timeScale;

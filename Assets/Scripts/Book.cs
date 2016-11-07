@@ -42,7 +42,7 @@ public class Book : MonoBehaviour {
 		}
 	}
 
-	IEnumerator openClose(bool open){
+	public IEnumerator openClose(bool open){
 		float waitTime = .1f;
 		if (open) {
 			playAudio (0);
@@ -70,7 +70,6 @@ public class Book : MonoBehaviour {
 				sr.material.SetTexture ("_EffectMap", closingTextureMaps [i]);
 				yield return new WaitForSeconds (waitTime);
 			}
-			playAudio (1);
 			isOpen = open;
 		}
 
@@ -78,6 +77,7 @@ public class Book : MonoBehaviour {
 	}
 
 	public void playAudio(int index){
+		audio [index].volume = SettingsManager.Instance.SfxVolume;
 		audio [index].Play ();
 	}
 

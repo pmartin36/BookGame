@@ -28,7 +28,7 @@ public class PlayerInput : MonoBehaviour {
 			vertical = mpos.y;
 		}
 		else {
-			if (MenuOpen) {
+			if (GameManager.MenuOpen) {
 				horizontal = Input.GetAxisRaw ("Horizontal");
 				vertical = Input.GetAxisRaw ("Vertical");
 			}
@@ -40,22 +40,26 @@ public class PlayerInput : MonoBehaviour {
 
 		if(Input.GetButtonDown("PlayPause")){
 			mousetrack = false;
-			MenuOpen = !MenuOpen;
-			menu.openClose (MenuOpen);
-			GameManager.SetMenuOpen (MenuOpen);
+			menu.openClose (!GameManager.MenuOpen);
 		}
 
-		if (MenuOpen) {
+		if (GameManager.MenuOpen) {
+			//GameManager.SetTimeScale (0);
 			if (Input.GetButtonDown ("Harvest")) {
-				MenuOpen = menu.back ();
+				menu.back ();
 			}
 			else if (Input.GetButtonDown ("Jump")) {
-				MenuOpen = menu.select ();
+				menu.select ();
 			}
 			else {
 				menu.moveCursor (vertical);
+				menu.useHorizontal (horizontal);
 			}
-			GameManager.SetTimeScale (0);
+		}
+		else if (GameManager.LevelComplete) {
+			if (Input.GetButtonDown ("Jump")) {
+				GameManager.LoadNextLevel ();
+			}
 		}
 		else {
 			if (Input.GetButtonDown ("Restart")) {

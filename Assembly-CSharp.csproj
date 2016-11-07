@@ -49,7 +49,11 @@
      <Compile Include="Assets\Scripts\Book.cs" />
      <Compile Include="Assets\Scripts\ButtonUI.cs" />
      <Compile Include="Assets\Scripts\CameraController.cs" />
+     <Compile Include="Assets\Scripts\CompendiumEntry.cs" />
+     <Compile Include="Assets\Scripts\CompendiumMenu.cs" />
      <Compile Include="Assets\Scripts\ConstantSpring.cs" />
+     <Compile Include="Assets\Scripts\ControlsMenu.cs" />
+     <Compile Include="Assets\Scripts\CreditsMenu.cs" />
      <Compile Include="Assets\Scripts\GameManager.cs" />
      <Compile Include="Assets\Scripts\Hit.cs" />
      <Compile Include="Assets\Scripts\Item.cs" />
@@ -67,9 +71,16 @@
      <Compile Include="Assets\Scripts\Raycaster.cs" />
      <Compile Include="Assets\Scripts\RopeSegment.cs" />
      <Compile Include="Assets\Scripts\RotatingLetter.cs" />
+     <Compile Include="Assets\Scripts\SGameManager.cs" />
+     <Compile Include="Assets\Scripts\SaveInfo.cs" />
      <Compile Include="Assets\Scripts\SentenceGenerator.cs" />
+     <Compile Include="Assets\Scripts\SettingsManager.cs" />
+     <Compile Include="Assets\Scripts\SettingsMenu.cs" />
+     <Compile Include="Assets\Scripts\Singleton.cs" />
      <Compile Include="Assets\Scripts\Spring.cs" />
+     <Compile Include="Assets\Scripts\StartMenuInput.cs" />
      <Compile Include="Assets\Scripts\StringItem.cs" />
+     <Compile Include="Assets\Scripts\Submenu.cs" />
      <Compile Include="Assets\Scripts\Test.cs" />
      <Compile Include="Assets\Scripts\ThrowableGrapple.cs" />
      <Compile Include="Assets\Scripts\ThrowableNew.cs" />
@@ -83,6 +94,8 @@
      <None Include="Assets\Shaders\BeamMeUp.shader" />
      <None Include="Assets\Shaders\Rope.shader" />
      <None Include="Assets\Shaders\MenuButtonEffect.shader" />
+     <None Include="Assets\Shaders\EndLevelFade.shader" />
+     <None Include="Assets\Shaders\Title.shader" />
      <None Include="Assets\Shaders\LetterEffects.shader" />
      <None Include="Assets\Shaders\Vapor.shader" />
  <Reference Include="UnityEngine.UI">

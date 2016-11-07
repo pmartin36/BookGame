@@ -160,6 +160,10 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 				directionalVector = new Vector3 (horizontal, vertical);
 			}
 
+			if (oppositeInputs) {
+				directionalVector *= -1;
+			}
+
 			if (Mathf.Abs (directionalVector.x) + Mathf.Abs (directionalVector.y) > 0.5f) {
 				//we will be making changes to the angle 
 				stickRotation = Vector3.Angle (Vector3.right, directionalVector);
@@ -204,6 +208,10 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 			}
 			else {
 				directionalVector = new Vector3 (horizontal, vertical);
+			}
+
+			if (oppositeInputs) {
+				directionalVector *= -1;
 			}
 
 			if (Mathf.Abs (directionalVector.x) + Mathf.Abs (directionalVector.y) > 0.5f) {
@@ -937,6 +945,7 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 	}
 
 	public void playAudio(int index){
+		audio [index].volume = SettingsManager.Instance.SfxVolume;
 		audio [index].Play ();
 	}
 

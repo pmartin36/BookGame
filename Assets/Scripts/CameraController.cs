@@ -22,6 +22,9 @@ public class CameraController : MonoBehaviour {
 	public bool DisplayVapor { get; set; }
 	Material vaporEffect;
 
+	public bool EndLevel {get; set;}
+	Material endLevelEffect;
+
 	// Use this for initialization
 	void Start () {
 		init ();
@@ -41,6 +44,9 @@ public class CameraController : MonoBehaviour {
 
 		DisplayVapor = false;
 		vaporEffect = Resources.Load<Material> ("Materials/Graphic/Vapor");
+
+		EndLevel = false;
+		endLevelEffect = Resources.Load<Material> ("Materials/Graphic/EndLevelFade");
 	}
 
 	// Update is called once per frame
@@ -183,8 +189,24 @@ public class CameraController : MonoBehaviour {
 		yield return null;
 	}
 
+	public IEnumerator EndLevelFade(){
+		EndLevel = true;
+		float startTime = Time.time;
+		float opacity = 0;
+		while (opacity < 1) {
+			opacity = Mathf.Lerp (0, 1, Time.time - startTime);
+			endLevelEffect.SetColor ("_Color", new Color (0, 0, 0, opacity));
+			yield return new WaitForEndOfFrame ();
+		}
+		yield return null;
+	}
+
 	void OnRenderImage(RenderTexture src, RenderTexture dst){
-		if(DisplayVapor)
+		if (EndLevel) {
+			Graphics.Blit (src, dst, endLevelEffect);
+		}
+		else if (DisplayVapor) {
 			Graphics.Blit (src, dst, vaporEffect);
+		}
 	}
 }
