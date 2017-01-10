@@ -716,6 +716,7 @@ public class ButtonUI : MonoBehaviour, LetterEventInterface {
 			powerupSprites[0].count = e.ChangeAmount;
 			advancePowerups (0);
 		}
+		//if < -1, ignore
 	}
 
 	/********* CLEAN UP ********/

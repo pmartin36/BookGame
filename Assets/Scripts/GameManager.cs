@@ -1,6 +1,8 @@
 ﻿using UnityEngine;
 using System.Collections;
 using UnityEngine.SceneManagement;
+using System.Collections.Generic;
+using System.Linq;
 
 
 public class GameManager : MonoBehaviour {
@@ -31,6 +33,12 @@ public class GameManager : MonoBehaviour {
 
 		levelCompleteContainer.SetActive (false);
 		//levelOngoingContainer.SetActive(false);
+
+		if(!SettingsManager.Instance.LevelHasBeenLoaded){
+			CameraController cc = Camera.main.GetComponent<CameraController> ();
+			cc.PlayerSpawnFadeIn ();
+			SettingsManager.Instance.LevelHasBeenLoaded = true;
+		}
 	}
 	
 	// Update is called once per frame
@@ -49,6 +57,7 @@ public class GameManager : MonoBehaviour {
 
 	public void ExitToMenu(){
 		SetMenuOpen (false);
+		SettingsManager.Instance.LevelHasBeenLoaded = false;
 		SceneManager.LoadScene (0);
 	}
 
@@ -139,12 +148,13 @@ public class GameManager : MonoBehaviour {
 		}
 		*/
 
-		StartCoroutine (cc.EndLevelFade ()); //finishes in 1 second
-		yield return new WaitForSeconds(.85f);
+		cc.EndLevelFade(); //finishes in 1 second
+		yield return new WaitForSeconds(.75f);
 		yield return StartCoroutine (book.openClose (false)); //finishes in .5 seconds
 		book.playAudio (1);
 		 
 		//go to showing line of book -> wait for input -> end level
+		SettingsManager.Instance.LevelHasBeenLoaded = false;
 		GameManager.LevelComplete = true;
 		levelCompleteContainer.SetActive (true);
 		levelOngoingContainer.SetActive (false);

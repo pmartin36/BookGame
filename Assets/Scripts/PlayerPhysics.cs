@@ -89,6 +89,8 @@ public class PlayerPhysics : MonoBehaviour {
 	Vector2 collisionNormal;
 	bool horizontal_set;
 
+	bool freefalling = false;
+
 	void Awake(){
 		rigid = GetComponent<Rigidbody2D> ();
 
@@ -134,7 +136,7 @@ public class PlayerPhysics : MonoBehaviour {
 	}
 		
 	void Update(){
-		
+
 	}
 
 	void FixedUpdate(){
@@ -206,7 +208,7 @@ public class PlayerPhysics : MonoBehaviour {
 				transform.localScale = new Vector3(Mathf.Sign(rigid.velocity.x) * Mathf.Abs(transform.localScale.x), transform.localScale.y, 1);
 			}
 				
-			while(throwableRope[0].SqrDistanceFromStart < playerMoveMag){
+			while(throwableRope.Count > 0 && throwableRope[0].SqrDistanceFromStart < playerMoveMag){
 				Destroy (throwableRope [0].gameObject);
 				throwableRope.RemoveAt (0);
 			}
@@ -218,13 +220,13 @@ public class PlayerPhysics : MonoBehaviour {
 				transform.position = new Vector3 (transform.position.x, boundingbox.max.y - height / 2f, transform.position.z);
 				rigid.velocity = new Vector2 (rigid.velocity.x, 0);
 			}
-			else {
+			else if(!getPlayerController ().PlayerDying) {
 				//pushed out by letter
-				GameManager.ResetLevel ();
+				playerController.PlayerDeath (false);
 			}
 		}
-		if (transform.position.y - height / 2f < boundingbox.min.y) {
-			GameManager.ResetLevel ();
+		if (!getPlayerController ().PlayerDying && transform.position.y - height / 2f < boundingbox.min.y) {
+			playerController.PlayerDeath (false);
 		}
 		if (transform.position.x + width / 2f > boundingbox.max.x) {
 			if (collisionLetter == null || collisionLetter.MoveAmount.x <= 0) {
@@ -233,8 +235,8 @@ public class PlayerPhysics : MonoBehaviour {
 			}
 			else {
 				//pushed out by letter
-				if (leftRays.Any (s => s.vertical == 0)) {
-					GameManager.ResetLevel ();
+				if (!getPlayerController ().PlayerDying && leftRays.Any (s => s.vertical == 0)) {
+					playerController.PlayerDeath (false);
 				}
 			}
 		}
@@ -245,10 +247,16 @@ public class PlayerPhysics : MonoBehaviour {
 			}
 			else {
 				//pushed out by letter
-				if (rightRays.Any (s => s.vertical == 0)) {
-					GameManager.ResetLevel ();
+				if (!getPlayerController ().PlayerDying && rightRays.Any (s => s.vertical == 0)) {
+					playerController.PlayerDeath (false);
 				}
 			}
+		}
+
+		if (rigid.velocity.y < -10f && !freefalling) {
+			//start freefall
+			freefalling = true;
+			Debug.Log ("Freefall");
 		}
 
 		previousFrameVelocity = rigid.velocity;
@@ -758,6 +766,14 @@ public class PlayerPhysics : MonoBehaviour {
 		return false;
 	}
 
+	public List<RopeSegment> DeepCopyRopes(List<RopeSegment> ropes){
+		return ropes.Select (r => {
+			RopeSegment nr = Instantiate(r);
+			nr.SqrDistanceFromStart = r.SqrDistanceFromStart;
+			return nr;
+		}).ToList();
+	}
+
 	public void SetGrappleDirection(Vector3 grapple_location, List<RopeSegment> ropes){
 		if (!rigid.isKinematic) {
 			if (Vector3.Distance (this.transform.position, grapple_location) > 1) {
@@ -773,11 +789,11 @@ public class PlayerPhysics : MonoBehaviour {
 				grappleStartPoint = this.transform.position;
 				grappleEndPoint = grapple_location;
 				grappleVector = (grappleEndPoint - grappleStartPoint).normalized;
-				throwableRope = ropes;
+				throwableRope = DeepCopyRopes(ropes);
 				setGravityScale (0);
 			}
 			else {
-				throwableRope = ropes;
+				throwableRope = DeepCopyRopes(ropes);
 				StopGrapple ();
 			}
 		}
@@ -796,12 +812,9 @@ public class PlayerPhysics : MonoBehaviour {
 		if (this.collisionLetter != effector) {
 			getPlayerController ().CancelBellows ();
 			getPlayerController ().CancelThrowable ();
-			StartCoroutine (Yank (effector, tobject, ropes));
+			StartCoroutine (Yank (effector, tobject, DeepCopyRopes(ropes)));
 		}
 		else {
-			for (int i = 0; i < ropes.Count; i++) {
-				Destroy (ropes [i].gameObject);
-			}
 			getPlayerController ().playerHasControl = true;
 		}
 	}
@@ -936,8 +949,8 @@ public class PlayerPhysics : MonoBehaviour {
 	public void OnCollisionEnter2D(Collision2D col){		
 		PerformRaycast ();
 
-		if (CheckIfSquished (col)) {
-			GameManager.ResetLevel ();
+		if (!getPlayerController().PlayerDying && CheckIfSquished (col)) {
+			playerController.PlayerDeath (false);
 		}
 
 		if (Grappling) {

@@ -42,6 +42,8 @@ public class StartMenuInput : MonoBehaviour {
 		List<GameObject> r = GameObject.FindGameObjectsWithTag ("Submenu").ToList();
 		main = GameObject.FindGameObjectsWithTag ("Submenu").First (s => s.name == "Main");
 
+		SettingsManager m = SettingsManager.Instance;
+
 		StartCoroutine(WriteTitle ());
 
 		settings.gameObject.SetActive (false);

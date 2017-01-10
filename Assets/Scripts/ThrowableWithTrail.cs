@@ -70,6 +70,10 @@ public class ThrowableWithTrail : ThrowableNew {
 		}
 			
 		base.Init ();
+
+		startingVelocity = 50;
+		displayVelocity = 7;
+		gravityModifier = 0;
 	}
 
 	GameObject AddTrailToObject(Transform p, Vector3 initial_position){

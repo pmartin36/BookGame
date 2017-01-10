@@ -23,7 +23,14 @@ public class CameraController : MonoBehaviour {
 	Material vaporEffect;
 
 	public bool EndLevel {get; set;}
-	Material endLevelEffect;
+	public bool FadeInProgress {get;set;}
+	Material fadeEffect;
+
+	public bool DeathInProgress {get;set;}
+	Material deathEffect;
+
+	public bool PlayerSpawning {get;set;}
+	public bool PlayerDying { get; set; }
 
 	// Use this for initialization
 	void Start () {
@@ -46,7 +53,10 @@ public class CameraController : MonoBehaviour {
 		vaporEffect = Resources.Load<Material> ("Materials/Graphic/Vapor");
 
 		EndLevel = false;
-		endLevelEffect = Resources.Load<Material> ("Materials/Graphic/EndLevelFade");
+		fadeEffect = Resources.Load<Material> ("Materials/Graphic/EndLevelFade");
+
+		DeathInProgress = false;
+		deathEffect = Resources.Load<Material> ("Materials/Graphic/CameraDeath");
 	}
 
 	// Update is called once per frame
@@ -62,9 +72,29 @@ public class CameraController : MonoBehaviour {
 		}
 	}
 
+	public void FindCameraCoordsInsideBox(ref Vector3 cc){
+		float width = cam.orthographicSize * cam.aspect;
+
+		if (cc.x + width > boundingBox.max.x) {
+			cc.x = boundingBox.max.x - width;
+		}
+		else if (cc.x - width < boundingBox.min.x) {
+			cc.x = boundingBox.min.x + width;
+		}
+
+		if (cc.y + cam.orthographicSize > boundingBox.max.y) {
+			cc.y = boundingBox.max.y - cam.orthographicSize;
+		}
+		else if (cc.y - cam.orthographicSize < boundingBox.min.y) {
+			cc.y = boundingBox.min.y + cam.orthographicSize;
+		}
+	}
+
 	public void setPan(Vector2 _start, Vector2 _end){
 		start = new Vector3 (_start.x, _start.y, z_pos);
 		end = new Vector3 (_end.x, _end.y, z_pos);
+		FindCameraCoordsInsideBox(ref end);
+
 		panStartTime = Time.time;
 		freezeCamera = true;
 		isPanning = true;
@@ -74,26 +104,11 @@ public class CameraController : MonoBehaviour {
 		if (!freezeCamera) {
 			if (cam == null)
 				init ();
-			
-			float width = cam.orthographicSize * cam.aspect;
-			float x_with_offset = x;
-			float y_with_offset = y;
 
-			if (x + width > boundingBox.max.x) {
-				x_with_offset = boundingBox.max.x - width;
-			}
-			else if (x - width < boundingBox.min.x) {
-				x_with_offset = boundingBox.min.x + width;
-			}
-
-			if (y + cam.orthographicSize > boundingBox.max.y) {
-				y_with_offset = boundingBox.max.y - cam.orthographicSize;
-			}
-			else if (y - cam.orthographicSize < boundingBox.min.y) {
-				y_with_offset = boundingBox.min.y + cam.orthographicSize;
-			}
+			Vector3 cc = new Vector3 (x, y, z_pos);
+			FindCameraCoordsInsideBox (ref cc);
 				
-			transform.position = new Vector3 (x_with_offset, y_with_offset, z_pos);
+			transform.position = cc;
 			offset_from_player = new Vector3 (x - transform.position.x, y - transform.position.y, 0);
 		}
 		else {
@@ -135,8 +150,10 @@ public class CameraController : MonoBehaviour {
 	}
 
 	public void cameraToLevelSize(){
-		float levelSize = boundingBox.extents.y;
-		StartCoroutine (Resize (levelSize, true));
+		float levelSizeY = boundingBox.extents.y;
+		float levelSizeX = boundingBox.extents.x / cam.aspect;
+
+		StartCoroutine (Resize (Mathf.Min(levelSizeX, levelSizeY), true));
 	}
 
 	public IEnumerator StartVapor(){
@@ -189,24 +206,60 @@ public class CameraController : MonoBehaviour {
 		yield return null;
 	}
 
-	public IEnumerator EndLevelFade(){
+	public void EndLevelFade(){
 		EndLevel = true;
+		FadeInProgress = true;
+		StartCoroutine(Fade(true, 1, fadeEffect));
+	}
+
+	public void PlayerSpawnFadeIn(){
+		FadeInProgress = true;
+		StartCoroutine(Fade(false, .2f, fadeEffect));
+	}
+
+	public IEnumerator Fade(bool isFadingOut, float timeToFade, Material m){
 		float startTime = Time.time;
-		float opacity = 0;
-		while (opacity < 1) {
-			opacity = Mathf.Lerp (0, 1, Time.time - startTime);
-			endLevelEffect.SetColor ("_Color", new Color (0, 0, 0, opacity));
-			yield return new WaitForEndOfFrame ();
+		float opacity, startOpacity, endOpacity;
+		if (isFadingOut) {
+			opacity = 0;
+			startOpacity = 0;
+			endOpacity = 1;
 		}
-		yield return null;
+		else {
+			opacity = 1f;
+			startOpacity = 1f;
+			endOpacity = 0;
+		}
+
+		while (Mathf.Abs (opacity - endOpacity) > 0.01) {
+			opacity = Mathf.Lerp (startOpacity, endOpacity, Mathf.SmoothStep(0,1,(Time.time - startTime) / timeToFade));
+			m.SetColor ("_Color", new Color (0, 0, 0, opacity));
+			yield return new WaitForSeconds(timeToFade/100);
+		}
+
+		FadeInProgress = false;
+	}
+
+	public void SetFadeOpacity(float o){
+		fadeEffect.SetColor ("_Color", new Color (0, 0, 0, o));
+	}
+
+	public void UpdateDeathEffect(float time, Vector3 pos){
+		deathEffect.SetFloat ("_TimeDiff", time);
+
+		Vector4 v = new Vector4 (pos.x, pos.y, 0, 1);
+		deathEffect.SetVector ("_Center", v);
 	}
 
 	void OnRenderImage(RenderTexture src, RenderTexture dst){
-		if (EndLevel) {
-			Graphics.Blit (src, dst, endLevelEffect);
+		if (FadeInProgress || EndLevel) {
+			Graphics.Blit (src, dst, fadeEffect);
 		}
 		else if (DisplayVapor) {
 			Graphics.Blit (src, dst, vaporEffect);
+		}
+		else if(DeathInProgress){
+			Graphics.Blit (src, dst, deathEffect);
 		}
 	}
 }

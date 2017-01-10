@@ -6,7 +6,7 @@ public class Submenu : MonoBehaviour {
 	protected bool disableHorizontalMove = false;
 
 	// Use this for initialization
-	public void Start () {
+	public virtual void Start () {
 		transform.localPosition = Vector3.zero;
 		//gameObject.SetActive (false);
 	}

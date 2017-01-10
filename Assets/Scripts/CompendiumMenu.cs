@@ -6,7 +6,7 @@ using System.Linq;
 
 public class CompendiumMenu : Submenu {
 
-	private Dictionary<string, CompendiumEntry> entries;
+	private SortedDictionary<string, CompendiumEntry> entries;
 
 	private Text letterSelector;
 	private Text powerupNameField;
@@ -16,7 +16,7 @@ public class CompendiumMenu : Submenu {
 	int index = 0;
 
 	// Use this for initialization
-	void Start () {
+	public override void Start () {
 		
 		Text[] t = gameObject.GetComponentsInChildren<Text> ();
 		powerupNameField = t.First(v => v.name == "PowerupName");
@@ -26,12 +26,13 @@ public class CompendiumMenu : Submenu {
 		Image[] im = gameObject.GetComponentsInChildren<Image> ();
 		illustrationField = im.First (v => v.name == "Illustration");
 
-		entries = new Dictionary<string, CompendiumEntry> ();
+		entries = new SortedDictionary<string, CompendiumEntry> ();
 
 		base.Start ();
 	}
 
-	public void GoToLetter(string s){
+	public void GoToLetter(string s, int i){
+		index = i;
 		LoadCompendiumEntry (s);
 	}
 
@@ -59,9 +60,10 @@ public class CompendiumMenu : Submenu {
 		}
 		*/
 
-		int settingsCount = SettingsManager.Instance.collectedLetters.Count;
-		if (settingsCount > 0) {
-			index = (index + direction) % settingsCount;
+		int m = SettingsManager.Instance.collectedLetters.Count;
+		if (m > 0) {
+			int x = index + direction;
+			index = (x%m + m)%m;
 			letterSelector.text = SettingsManager.Instance.collectedLetters [index];
 		}
 	}
@@ -95,7 +97,7 @@ public class CompendiumMenu : Submenu {
 	IEnumerator PauseHorizontalMove(){
 		disableHorizontalMove = true;
 		float t = Time.realtimeSinceStartup;
-		while (disableHorizontalMove && Time.realtimeSinceStartup - t < 0.1f) {
+		while (disableHorizontalMove && Time.realtimeSinceStartup - t < 0.2f) {
 			yield return null;
 		}
 		disableHorizontalMove = false;
@@ -104,7 +106,7 @@ public class CompendiumMenu : Submenu {
 	IEnumerator WaitBeforeLoading(){
 		string currentText = letterSelector.text;
 		float t = Time.realtimeSinceStartup;
-		while (Time.realtimeSinceStartup - t < 0.5f) {
+		while (Time.realtimeSinceStartup - t < 0.25f) {
 			yield return null;
 		}
 

@@ -49,6 +49,7 @@
      <Compile Include="Assets\Scripts\Book.cs" />
      <Compile Include="Assets\Scripts\ButtonUI.cs" />
      <Compile Include="Assets\Scripts\CameraController.cs" />
+     <Compile Include="Assets\Scripts\CameraEffects.cs" />
      <Compile Include="Assets\Scripts\CompendiumEntry.cs" />
      <Compile Include="Assets\Scripts\CompendiumMenu.cs" />
      <Compile Include="Assets\Scripts\ConstantSpring.cs" />
@@ -84,6 +85,7 @@
      <Compile Include="Assets\Scripts\Test.cs" />
      <Compile Include="Assets\Scripts\ThrowableGrapple.cs" />
      <Compile Include="Assets\Scripts\ThrowableNew.cs" />
+     <Compile Include="Assets\Scripts\ThrowableNewWithTrail.cs" />
      <Compile Include="Assets\Scripts\ThrowableWithTrail.cs" />
      <Compile Include="Assets\Scripts\ThrowableYank.cs" />
      <Compile Include="Assets\Scripts\TimerPowerup.cs" />
@@ -95,6 +97,7 @@
      <None Include="Assets\Shaders\Rope.shader" />
      <None Include="Assets\Shaders\MenuButtonEffect.shader" />
      <None Include="Assets\Shaders\EndLevelFade.shader" />
+     <None Include="Assets\Shaders\BlackCircle.shader" />
      <None Include="Assets\Shaders\Title.shader" />
      <None Include="Assets\Shaders\LetterEffects.shader" />
      <None Include="Assets\Shaders\Vapor.shader" />

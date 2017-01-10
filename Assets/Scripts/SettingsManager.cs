@@ -7,6 +7,7 @@ public class SettingsManager : Singleton<SettingsManager> {
 	public float MusicVolume { get; set; }
 	public float SfxVolume { get; set;}
 	public int CurrentLevel { get; set; }
+	public bool LevelHasBeenLoaded { get; set; }
 
 	public List<string> collectedLetters;
 
@@ -17,6 +18,8 @@ public class SettingsManager : Singleton<SettingsManager> {
 		MusicVolume = 0.5f;
 		SfxVolume = 0.5f;
 		CurrentLevel = 0;
+
+		LevelHasBeenLoaded = false;
 
 		collectedLetters = new List<string> ();
 	}

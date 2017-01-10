@@ -61,6 +61,8 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 	GameObject collidingKeyhole;
 	TimerPowerup timer;
 
+	public bool PlayerDying {get;set;}
+
 	bool oppositeInputs = false;
 	public ParticleSystem trailingRope { get;  set; }
 
@@ -248,7 +250,7 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 				t.transform.parent = this.transform;
 				t.transform.localPosition = new Vector3 (0, spriteRenderer.bounds.extents.y * .25f, 0);
 
-				ThrowableWithTrail twt = t.AddComponent<ThrowableWithTrail> ();
+				ThrowableNewWithTrail twt = t.AddComponent<ThrowableNewWithTrail> ();
 				twt.Thrower = pphysics;
 				twt.setLetter (l);
 				twt.Init (l == "G"); 
@@ -426,6 +428,7 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 						sendHandlerEvent (eventLetter, 0);
 					}
 					else if (harvestableLetter.letter == "P") {
+						sendHandlerEvent (eventLetter, -2);
 						transform.position = originalPosition;
 						List<Letter> letters = GameObject.FindGameObjectsWithTag ("Letter").Select (a => a.GetComponent<Letter> ()).ToList();
 						foreach (Letter a in letters) {
@@ -1073,6 +1076,45 @@ public class PlayerController : MonoBehaviour, LetterEventInterface {
 			collidingKeyhole = null;
 		}
 	}
+
+	public void PlayerDeath(bool followPlayerPosition, bool disableRigidbody = true){
+		PlayerDying = true;
+		if (disableRigidbody) {
+			pphysics.setKinematic (true);
+		}
+		foreach (Collider2D c in gameObject.GetComponents<Collider2D>()) {
+			c.enabled = false;
+		}
+		StartCoroutine (DieResetLevel (followPlayerPosition));
+	}
+
+	IEnumerator DieResetLevel(bool followPlayerPosition){
+		float startTime = Time.time;
+		Vector3 pos = Camera.main.WorldToScreenPoint (this.transform.position);
+		mainCamera.DeathInProgress = true;
+
+		while (Time.time - startTime < 1) {
+			if (followPlayerPosition) {
+				pos = Camera.main.WorldToScreenPoint (this.transform.position);
+			}
+
+			mainCamera.UpdateDeathEffect (Time.time - startTime, pos);
+
+			yield return new WaitForEndOfFrame ();
+		}
+
+		mainCamera.DeathInProgress = false;
+		mainCamera.FadeInProgress = true;
+		startTime = Time.time;
+		mainCamera.SetFadeOpacity (1);
+
+		while (Time.time - startTime < 0.1f) {
+			yield return new WaitForEndOfFrame ();
+		}
+
+		GameManager.ResetLevel ();
+	}
+		
 
 	void OnDestroy(){
 		StopAllCoroutines ();

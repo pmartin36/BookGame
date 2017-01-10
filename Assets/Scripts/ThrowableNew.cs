@@ -19,6 +19,8 @@ public class ThrowableNew : MonoBehaviour {
 	protected Bounds boundingBox;
 
 	protected float startingVelocity;
+	protected float gravityModifier;
+	protected float displayVelocity;
 
 	protected GameObject[] trail;
 
@@ -35,6 +37,8 @@ public class ThrowableNew : MonoBehaviour {
 			sr = GetComponent<SpriteRenderer> ();
 		}
 		startingVelocity = 7;
+		displayVelocity = startingVelocity;
+		gravityModifier = 0.5f;
 
 		trail = new GameObject[10];
 		GameObject prefab = Resources.Load<GameObject> ("Prefabs/Circle");
@@ -87,7 +91,7 @@ public class ThrowableNew : MonoBehaviour {
 				//redo position prediction
 				Vector2 a = GameManager.angleToVector (angle);
 				LayerMask mask = 1 << LayerMask.NameToLayer ("Letter") | 1 << LayerMask.NameToLayer ("Walkable");
-				List<PositionPrediction.RigidbodyStatusData> positions = PositionPrediction.predict (transform.position, a * startingVelocity, 0, 50, 0, true, 0.5f, 0, sr.bounds.extents.x, mask);
+				List<PositionPrediction.RigidbodyStatusData> positions = PositionPrediction.predict (transform.position, a * displayVelocity, 0, 50, 0, true, gravityModifier, 0, sr.bounds.extents.x, mask);
 				TrajectoryAngle = angle;
 				for (int i = 5; i < positions.Count; i += 5) {
 					//Debug.DrawLine (positions [i].position, positions [i - 5].position, Color.blue, 1f);
@@ -128,6 +132,7 @@ public class ThrowableNew : MonoBehaviour {
 
 		setKinematic (false);
 		rigid.velocity = GameManager.angleToVector (TrajectoryAngle) * startingVelocity;
+		rigid.gravityScale = gravityModifier;
 
 		sr.sortingLayerName = "BackItem";
 

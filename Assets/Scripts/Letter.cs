@@ -26,6 +26,7 @@ public class Letter : MonoBehaviour,LetterEventInterface {
 
 	private Vector2 originalPosition;
 	private float originalRotation;
+	bool HasMoved {get;set;}
 
 	public Vector3 MoveAmount { get; private set; }
 	public bool HasDisappeared { get; private set; }
@@ -53,6 +54,8 @@ public class Letter : MonoBehaviour,LetterEventInterface {
 		HasDisappeared = false;
 
 		boundingBox = GameObject.FindGameObjectWithTag ("Background").GetComponent<SpriteRenderer> ().bounds;
+
+		HasMoved = false;
 
 		GameManager.signUpForNewLetterEvent (this);
 	}

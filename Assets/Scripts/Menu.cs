@@ -8,6 +8,8 @@ public class Menu : MonoBehaviour {
 
 	private enum Menutype{ MAIN, COMPENDIUM, CONTROLS, SETTINGS };
 
+	public const bool disableFirstTimePowerupPopup = false;
+
 	private bool disableMoveCursor = false;
 	private int index = 0;
 	private List<Button> options = new List<Button>();
@@ -205,13 +207,23 @@ public class Menu : MonoBehaviour {
 	}
 
 	public void c_ItemChangeEvent(object sender, NewLetterEvent e){
-		string s = e.PassedLetter.letter;
-		if (!SettingsManager.Instance.collectedLetters.Contains (s)) {
-			SettingsManager.Instance.collectedLetters.Add (s);
-			openClose (true);
-			switchMenu ((int)Menutype.COMPENDIUM);
-			compendium.GoToLetter (s);
+		if (!disableFirstTimePowerupPopup) {
+			string s = e.PassedLetter.letter;
+			if (!SettingsManager.Instance.collectedLetters.Contains (s)) {
 
+				int i;
+				for(i = 0; i < SettingsManager.Instance.collectedLetters.Count; i++){
+					if (SettingsManager.Instance.collectedLetters [i].CompareTo (s) > 0) {
+						break;
+					}
+				}
+				SettingsManager.Instance.collectedLetters.Insert (i,s);
+
+				openClose (true);
+				switchMenu ((int)Menutype.COMPENDIUM);
+				compendium.GoToLetter (s, i);
+
+			}
 		}
 	}
 }
